@@ -1,0 +1,225 @@
+apiVersion: leaderworkerset.x-k8s.io/v1
+kind: LeaderWorkerSet
+metadata:
+    name: vllm
+spec:
+    replicas: 1
+    leaderWorkerTemplate:
+        size: 2
+        restartPolicy: RecreateGroupOnPodRestart
+        leaderTemplate:
+            metadata:
+                labels:
+                    role: leader
+            spec:
+              terminationGracePeriodSeconds: 6000
+              initContainers:
+              - name: vllm-source-installer
+                image: "quay.io/tms/vllm-dev-base:0.0.9" # Your base image
+                imagePullPolicy: Always
+                command: ["/init-scripts/init-vllm.sh"]
+                env:
+                  - name: GH_TOKEN_FROM_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: gh-token-secret
+                        key: GH_TOKEN
+                        optional: true
+                volumeMounts:
+                  - name: vllm-repo-storage
+                    mountPath: /app/vllm
+                  - name: init-scripts-volume # Mounts the directory containing input scripts
+                    mountPath: /init-scripts
+                resources:
+                  requests:
+                    cpu: "4"
+                    memory: "16Gi"
+                  limits:
+                    cpu: "4"
+                    memory: "16Gi"
+
+              containers:
+              - name: vllm-leader
+                image: "quay.io/tms/vllm-dev-base:0.0.9" # Use the same base image
+                imagePullPolicy: Always
+                workingDir: /app/vllm
+                stdin: true
+                tty: true
+                command:
+                  - "/app/vllm/.venv/bin/vllm"
+                args:
+                  - "serve"
+                  - "meta-llama/Llama-3.2-3B-Instruct"
+                  - "--port"
+                  - "8080"
+                  - "--disable-log-requests"
+                  - "--enforce-eager"
+                  - "--tensor-parallel-size"
+                  - "1"
+                  - "--data-parallel-size"
+                  - "2"
+                  - "--data-parallel-size-local"
+                  - "1"
+                  - "--data-parallel-address"
+                  - "$(LWS_LEADER_ADDRESS)"
+                env:
+                  - name: HUGGING_FACE_HUB_TOKEN
+                    valueFrom:
+                      secretKeyRef:
+                        name: hf-secret
+                        key: HF_TOKEN
+                  - name: GH_TOKEN_FROM_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: gh-token-secret
+                        key: GH_TOKEN
+                        optional: true
+
+                resources:
+                  limits:
+                    nvidia.com/gpu: "1"
+                    memory: 64Gi
+                    ephemeral-storage: 40Gi
+                  requests:
+                    nvidia.com/gpu: "1"
+                    memory: 64Gi
+                    ephemeral-storage: 40Gi
+                    cpu: 16
+                ports:
+                  - containerPort: 8080
+                readinessProbe:
+                  tcpSocket:
+                    port: 8080
+                  initialDelaySeconds: 60
+                  periodSeconds: 60
+                volumeMounts:
+                  - name: vllm-repo-storage
+                    mountPath: /app/vllm
+                  - mountPath: /dev/shm
+                    name: dshm
+              volumes:
+                # Shared volume for vLLM source code, cloned by init container into /app/vllm
+                - name: vllm-repo-storage # This emptyDir will be mounted at /app/vllm
+                  emptyDir: {}
+                # Volume for the init script from ConfigMap
+                - name: init-scripts-volume
+                  configMap:
+                    name: vllm-init-scripts-config
+                    defaultMode: 0755 # Set execute permissions for the script
+                - name: dshm
+                  emptyDir:
+                    medium: Memory
+                    sizeLimit: 1Gi
+
+
+        workerTemplate:
+            spec:
+              terminationGracePeriodSeconds: 6000
+              initContainers:
+              - name: vllm-source-installer
+                image: "quay.io/tms/vllm-dev-base:0.0.9" # Your base image
+                imagePullPolicy: Always
+                command: ["/init-scripts/init-vllm.sh"]
+                env:
+                  - name: GH_TOKEN_FROM_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: gh-token-secret
+                        key: GH_TOKEN
+                        optional: true
+                volumeMounts:
+                  - name: vllm-repo-storage
+                    mountPath: /app/vllm
+                  - name: init-scripts-volume # Mounts the directory containing input scripts
+                    mountPath: /init-scripts
+                resources:
+                  requests:
+                    cpu: "4"
+                    memory: "16Gi"
+                  limits:
+                    cpu: "4"
+                    memory: "16Gi"
+
+              containers:
+              - name: vllm-worker
+                image: "quay.io/tms/vllm-dev-base:0.0.9" # Use the same base image
+                imagePullPolicy: Always
+                workingDir: /app/vllm
+                stdin: true
+                tty: true
+                command:
+                  - "/app/vllm/.venv/bin/vllm"
+                args:
+                  - "serve"
+                  - "meta-llama/Llama-3.2-3B-Instruct"
+                  - "--port"
+                  - "8080"
+                  - "--disable-log-requests"
+                  - "--enforce-eager"
+                  - "--tensor-parallel-size"
+                  - "1"
+                  - "--data-parallel-size"
+                  - "2"
+                  - "--data-parallel-size-local"
+                  - "1"
+                  - "--data-parallel-address"
+                  - "$(LWS_LEADER_ADDRESS)"
+                  - "--headless"
+                  - "--data-parallel-start-rank"
+                  - "1"
+                env:
+                  - name: HUGGING_FACE_HUB_TOKEN
+                    valueFrom:
+                      secretKeyRef:
+                        name: hf-secret
+                        key: HF_TOKEN
+                  - name: GH_TOKEN_FROM_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: gh-token-secret
+                        key: GH_TOKEN
+                        optional: true
+
+                resources:
+                  limits:
+                    nvidia.com/gpu: "1"
+                    memory: 64Gi
+                    ephemeral-storage: 40Gi
+                  requests:
+                    nvidia.com/gpu: "1"
+                    memory: 64Gi
+                    ephemeral-storage: 40Gi
+                    cpu: 16
+                volumeMounts:
+                  - name: vllm-repo-storage
+                    mountPath: /app/vllm
+                  - mountPath: /dev/shm
+                    name: dshm
+              volumes:
+                # Shared volume for vLLM source code, cloned by init container into /app/vllm
+                - name: vllm-repo-storage # This emptyDir will be mounted at /app/vllm
+                  emptyDir: {}
+                # Volume for the init script from ConfigMap
+                - name: init-scripts-volume
+                  configMap:
+                    name: vllm-init-scripts-config
+                    defaultMode: 0755 # Set execute permissions for the script
+                - name: dshm
+                  emptyDir:
+                    medium: Memory
+                    sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: vllm-leader
+spec:
+    ports:
+        - name: http
+          port: 8080
+          protocol: TCP
+          targetPort: 8080
+    selector:
+        leaderworkerset.sigs.k8s.io/name: vllm
+        role: leader
+    type: ClusterIP
