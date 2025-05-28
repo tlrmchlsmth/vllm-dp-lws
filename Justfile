@@ -8,10 +8,10 @@ MODEL := "$MODEL"
 logs POD:
     kubectl logs -f {{POD}} | grep -v "GET /metrics HTTP/1.1"
 
-hf-token HF_TOKEN:
-  kubectl create secret generic hf-secret --from-literal=HF_TOKEN='{{HF_TOKEN}}' -n {{NAMESPACE}}
-gh-token GH_TOKEN:
-    kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN='{{GH_TOKEN}}' -n {{NAMESPACE}}
+hf-token:
+  kubectl create secret generic hf-secret --from-literal=HF_TOKEN={{HF_TOKEN}} -n {{NAMESPACE}}
+gh-token:
+    kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}}
 
 #FIXME(tms): need a generic get-pods command
 get-ips:
