@@ -65,6 +65,8 @@ spec:
                   - "--data-parallel-rpc-port"
                   - "5555"
                 env:
+                  - name: VLLM_LOGGING_LEVEL
+                    value: "DEBUG"
                   - name: HF_TOKEN
                     valueFrom:
                       secretKeyRef:
@@ -172,6 +174,8 @@ spec:
                   - "--data-parallel-start-rank"
                   - "1"
                 env:
+                  - name: VLLM_LOGGING_LEVEL
+                    value: "DEBUG"
                   - name: HF_TOKEN
                     valueFrom:
                       secretKeyRef:

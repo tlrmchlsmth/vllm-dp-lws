@@ -48,7 +48,6 @@ delete-bench:
     kubectl delete pod -n {{NAMESPACE}} benchmark-interactive
 
 exec-bench:
-    kubectl cp reset_prefixes.sh {{NAMESPACE}}/benchmark-interactive:/app/reset_prefixes.sh && \
     echo "MODEL := \"{{MODEL}}\"" > .Justfile.remote.tmp && \
     cat Justfile.remote >> .Justfile.remote.tmp && \
     kubectl cp .Justfile.remote.tmp {{NAMESPACE}}/benchmark-interactive:/app/Justfile && \
