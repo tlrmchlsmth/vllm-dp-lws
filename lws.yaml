@@ -70,6 +70,7 @@ spec:
                       secretKeyRef:
                         name: hf-secret
                         key: HF_TOKEN
+                        optional: true
                   - name: GH_TOKEN_FROM_SECRET
                     valueFrom:
                       secretKeyRef:
@@ -177,6 +178,7 @@ spec:
                       secretKeyRef:
                         name: hf-secret
                         key: HF_TOKEN
+                        optional: true
                   - name: GH_TOKEN_FROM_SECRET
                     valueFrom:
                       secretKeyRef:
