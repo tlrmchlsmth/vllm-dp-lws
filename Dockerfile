@@ -67,14 +67,19 @@ RUN cd /tmp && \
     wget https://github.com/openucx/ucx/releases/download/v${UCX_VERSION}/ucx-${UCX_VERSION}.tar.gz && \
     tar -zxf ucx-${UCX_VERSION}.tar.gz && \
     cd ucx-${UCX_VERSION} && \
-    ./contrib/configure-release \
-        --prefix=${UCX_HOME} \
-        --with-cuda=${CUDA_HOME} \
-        --with-gdrcopy=${GDRCOPY_HOME} \
-        --enable-shared --disable-static \
-        --disable-doxygen-doc --enable-optimizations \
-        --enable-cma --enable-devel-headers \
-        --with-verbs --with-mlx5-dv --with-dm --enable-mt \
+    ./contrib/configure-release         \
+        --prefix=${UCX_HOME}            \
+        --with-cuda=${CUDA_HOME}        \
+        --with-gdrcopy=${GDRCOPY_HOME}  \
+        --enable-shared         \
+        --disable-static        \
+        --disable-doxygen-doc   \
+        --enable-optimizations  \
+        --enable-cma            \ 
+        --enable-devel-headers  \
+        --with-verbs            \
+        --with-dm               \ 
+        --enable-mt             \
     && make -j$(nproc) && make install-strip && \
     rm -rf /tmp/ucx-${UCX_VERSION}*
 
@@ -84,43 +89,58 @@ ENV CPATH=${UCX_HOME}/include:${CPATH}
 ENV LIBRARY_PATH=${UCX_HOME}/lib:${LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=${UCX_HOME}/lib/pkgconfig:${PKG_CONFIG_PATH}
 
+
 # --- Build and Install NIXL from Source ---
-RUN mkdir -p ${NIXL_SOURCE_DIR} && cd ${NIXL_SOURCE_DIR} && \
-    wget "https://github.com/ai-dynamo/nixl/archive/refs/tags/${NIXL_VERSION}.tar.gz" \
-        -O "nixl-${NIXL_VERSION}.tar.gz" && \
-    tar --strip-components=1 -zxvf "nixl-${NIXL_VERSION}.tar.gz" && \
-    rm "nixl-${NIXL_VERSION}.tar.gz" && \
-    mkdir build && cd build && \
-    meson setup --prefix=${NIXL_PREFIX} -Dbuildtype=release . && \
-    ninja && ninja install
+RUN cd /tmp \
+    && wget "https://github.com/ai-dynamo/nixl/archive/refs/tags/${NIXL_VERSION}.tar.gz" \
+        -O "nixl-${NIXL_VERSION}.tar.gz" \
+    && mkdir -p ${NIXL_SOURCE_DIR} \
+    && tar --strip-components=1 -xzf "nixl-${NIXL_VERSION}.tar.gz" -C ${NIXL_SOURCE_DIR} \
+    && rm "nixl-${NIXL_VERSION}.tar.gz" \
+    \
+    # create an out-of-source build directory
+    && mkdir -p ${NIXL_SOURCE_DIR}/build \
+    && cd ${NIXL_SOURCE_DIR}/build \
+    \
+    # configure, compile, install
+    && meson setup .. \
+         --prefix=${NIXL_PREFIX} \
+         -Dbuildtype=release \
+    && ninja -C . \
+    && ninja -C . install \
+    \
+    # cleanup
+    && rm -rf ${NIXL_SOURCE_DIR}/build
 
 ENV LD_LIBRARY_PATH=${NIXL_PREFIX}/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
 ENV NIXL_PLUGIN_DIR=${NIXL_PREFIX}/lib/x86_64-linux-gnu/plugins
 
 # --- Build and Install NVSHMEM from Source ---
+ARG MAX_JOBS=2
+ENV MAX_JOBS=${MAX_JOBS}
+RUN apt-get update && apt-get install -y cmake # TODO: Move this up to the main apt line
 RUN cd /tmp && \
     wget https://developer.nvidia.com/downloads/assets/secure/nvshmem/nvshmem_src_${NVSHMEM_VERSION}.txz && \
-    mkdir -p nvshmem && \
-    tar xf nvshmem_src_${NVSHMEM_VERSION}.txz -C nvshmem --strip-components=1 && \
-    cd nvshmem/nvshmem_src && \
+    tar -xf nvshmem_src_${NVSHMEM_VERSION}.txz && \
+    cd nvshmem_src && \
     mkdir build && cd build && \
     cmake \
       -G Ninja \
       -DNVSHMEM_PREFIX=${NVSHMEM_PREFIX} \
-      -DCMAKE_CUDA_ARCHITECTURES=90a \
-      -DNVSHMEM_MPI_SUPPORT=1 \
-      -DNVSHMEM_PMIX_SUPPORT=1 \
-      -DNVSHMEM_LIBFABRIC_SUPPORT=1 \
-      -DNVSHMEM_IBRC_SUPPORT=1 \
-      -DNVSHMEM_IBGDA_SUPPORT=1 \
-      -DNVSHMEM_USE_GDRCOPY=1 \
-      -DMPI_HOME=/usr \
-      -DPMIX_HOME=/usr \
-      -DLIBFABRIC_HOME=/usr \
-      -DGDRCOPY_HOME=${GDRCOPY_HOME} \
+      -DCMAKE_CUDA_ARCHITECTURES="80;89;90a;100a" \
+      -DNVSHMEM_MPI_SUPPORT=1            \
+      -DNVSHMEM_PMIX_SUPPORT=0           \
+      -DNVSHMEM_LIBFABRIC_SUPPORT=1      \
+      -DNVSHMEM_IBRC_SUPPORT=1           \
+      -DNVSHMEM_IBGDA_SUPPORT=1          \
+      -DNVSHMEM_USE_GDRCOPY=1            \
+      -DMPI_HOME=/usr                    \
+      -DLIBFABRIC_HOME=/usr              \
+      -DGDRCOPY_HOME=${GDRCOPY_HOME}     \
       .. && \
-    ninja && ninja install && \
-    rm -rf /tmp/nvshmem*
+    ninja -j${MAX_JOBS} && \
+    ninja -j${MAX_JOBS} install && \
+    rm -rf /tmp/nvshmem_src_${NVSHMEM_VERSION}*
 
 ENV PATH=${NVSHMEM_PREFIX}/bin:${PATH}
 ENV LD_LIBRARY_PATH=${NVSHMEM_PREFIX}/lib:${LD_LIBRARY_PATH}
