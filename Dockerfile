@@ -1,8 +1,12 @@
 # Dockerfile for vLLM development
 # Use a CUDA base image.
-FROM nvidia/cuda:12.8.1-devel-ubuntu24.04
+FROM docker.io/nvidia/cuda:12.8.1-devel-ubuntu24.04
 
 WORKDIR /app
+
+# NOTE: currently only used for building NVSHMEM
+ARG MAX_JOBS=16
+ENV MAX_JOBS=${MAX_JOBS}
 
 ENV PYTHON_VERSION=3.12
 ENV UCX_VERSION=1.18.1
@@ -37,7 +41,7 @@ RUN apt-get update && \
     # Build tools for UCX, NVSHMEM, etc.
     build-essential \
     autoconf automake libtool pkg-config \
-    meson ninja-build \
+    meson ninja-build cmake \
     # Other dependencies
     libnuma-dev \
     # RDMA stack (Mellanox OFED)
@@ -116,9 +120,6 @@ ENV LD_LIBRARY_PATH=${NIXL_PREFIX}/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
 ENV NIXL_PLUGIN_DIR=${NIXL_PREFIX}/lib/x86_64-linux-gnu/plugins
 
 # --- Build and Install NVSHMEM from Source ---
-ARG MAX_JOBS=2
-ENV MAX_JOBS=${MAX_JOBS}
-RUN apt-get update && apt-get install -y cmake # TODO: Move this up to the main apt line
 RUN cd /tmp && \
     wget https://developer.nvidia.com/downloads/assets/secure/nvshmem/nvshmem_src_${NVSHMEM_VERSION}.txz && \
     tar -xf nvshmem_src_${NVSHMEM_VERSION}.txz && \
@@ -133,6 +134,8 @@ RUN cd /tmp && \
       -DNVSHMEM_LIBFABRIC_SUPPORT=1      \
       -DNVSHMEM_IBRC_SUPPORT=1           \
       -DNVSHMEM_IBGDA_SUPPORT=1          \
+      -DNVSHMEM_BUILD_TESTS=0            \
+      -DNVSHMEM_BUILD_EXAMPLES=0         \
       -DNVSHMEM_USE_GDRCOPY=1            \
       -DMPI_HOME=/usr                    \
       -DLIBFABRIC_HOME=/usr              \
@@ -154,6 +157,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh \
 
 # Install my dotfiles
 WORKDIR ${HOME}
+RUN echo "Cloning and installing dotfiles"
 RUN git clone https://github.com/tlrmchlsmth/dotfiles.git
 RUN cd dotfiles && bash install.sh
 
@@ -161,4 +165,4 @@ RUN cd dotfiles && bash install.sh
 RUN echo "export APPIMAGE_EXTRACT_AND_RUN=1" >> $HOME/.zshrc
 
 WORKDIR /app/vllm
-ENTRYPOINT ["/app/vllm/.venv/bin/python", "-m", "vllm.entrypoints.openai.api_server"]
+ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]

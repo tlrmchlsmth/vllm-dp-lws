@@ -15,7 +15,7 @@ spec:
               terminationGracePeriodSeconds: 6000
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.10" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.11" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -26,8 +26,8 @@ spec:
                         key: GH_TOKEN
                         optional: true
                 volumeMounts:
-                  - name: vllm-repo-storage
-                    mountPath: /app/vllm
+                  - name: code-storage
+                    mountPath: /app/code
                   - name: init-scripts-volume # Mounts the directory containing input scripts
                     mountPath: /init-scripts
                 resources:
@@ -40,9 +40,9 @@ spec:
 
               containers:
               - name: vllm-leader
-                image: "quay.io/tms/vllm-dev-base:0.0.10" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.11" # Use the same base image
                 imagePullPolicy: Always
-                workingDir: /app/vllm
+                workingDir: /app/code
                 stdin: true
                 tty: true
                 command: ["/bin/sh","-c"]
@@ -51,7 +51,7 @@ spec:
                     DP_SIZE=2
                     TP_SIZE=1
                     DP_SIZE_LOCAL=1
-                    exec /app/vllm/.venv/bin/vllm serve \
+                    exec /app/code/venv/bin/vllm serve \
                       Qwen/Qwen3-30B-A3B-FP8 \
                       --port 8080 \
                       --disable-log-requests \
@@ -96,13 +96,12 @@ spec:
                   initialDelaySeconds: 600
                   periodSeconds: 600
                 volumeMounts:
-                  - name: vllm-repo-storage
-                    mountPath: /app/vllm
+                  - name: code-storage
+                    mountPath: /app/code
                   - mountPath: /dev/shm
                     name: dshm
               volumes:
-                # Shared volume for vLLM source code, cloned by init container into /app/vllm
-                - name: vllm-repo-storage # This emptyDir will be mounted at /app/vllm
+                - name: code-storage
                   emptyDir: {}
                 # Volume for the init script from ConfigMap
                 - name: init-scripts-volume
@@ -120,7 +119,7 @@ spec:
               terminationGracePeriodSeconds: 6000
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.10" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.11" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -131,8 +130,8 @@ spec:
                         key: GH_TOKEN
                         optional: true
                 volumeMounts:
-                  - name: vllm-repo-storage
-                    mountPath: /app/vllm
+                  - name: code-storage
+                    mountPath: /app/code
                   - name: init-scripts-volume # Mounts the directory containing input scripts
                     mountPath: /init-scripts
                 resources:
@@ -145,9 +144,9 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-base:0.0.10" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.11" # Use the same base image
                 imagePullPolicy: Always
-                workingDir: /app/vllm
+                workingDir: /app/code
                 stdin: true
                 tty: true
                 command: ["/bin/sh","-c"]
@@ -157,7 +156,7 @@ spec:
                     TP_SIZE=1
                     DP_SIZE_LOCAL=1
                     START_RANK=$(( LWS_WORKER_INDEX * DP_SIZE_LOCAL ))
-                    exec /app/vllm/.venv/bin/vllm serve \
+                    exec /app/code/venv/bin/vllm serve \
                       Qwen/Qwen3-30B-A3B-FP8 \
                       --port 8080 \
                       --disable-log-requests \
@@ -197,13 +196,13 @@ spec:
                     ephemeral-storage: 80Gi
                     cpu: 16
                 volumeMounts:
-                  - name: vllm-repo-storage
-                    mountPath: /app/vllm
+                  - name: code-storage
+                    mountPath: /app/code
                   - mountPath: /dev/shm
                     name: dshm
               volumes:
                 # Shared volume for vLLM source code, cloned by init container into /app/vllm
-                - name: vllm-repo-storage # This emptyDir will be mounted at /app/vllm
+                - name: code-storage # This emptyDir will be mounted at /app/vllm
                   emptyDir: {}
                 # Volume for the init script from ConfigMap
                 - name: init-scripts-volume
