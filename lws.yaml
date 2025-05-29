@@ -15,7 +15,7 @@ spec:
               terminationGracePeriodSeconds: 6000
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.9" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.10" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -40,7 +40,7 @@ spec:
 
               containers:
               - name: vllm-leader
-                image: "quay.io/tms/vllm-dev-base:0.0.9" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.10" # Use the same base image
                 imagePullPolicy: Always
                 workingDir: /app/vllm
                 stdin: true
@@ -120,7 +120,7 @@ spec:
               terminationGracePeriodSeconds: 6000
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.9" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.10" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -145,7 +145,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-base:0.0.9" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.10" # Use the same base image
                 imagePullPolicy: Always
                 workingDir: /app/vllm
                 stdin: true
