@@ -6,39 +6,13 @@ GH_TOKEN := "$GH_TOKEN"
 MODEL := "$MODEL"
 
 logs POD:
-    kubectl logs -f {{POD}} | grep -v "GET /metrics HTTP/1.1"
+  kubectl logs -f {{POD}} | grep -v "GET /metrics HTTP/1.1"
 
 hf-token:
   kubectl create secret generic hf-secret --from-literal=HF_TOKEN={{HF_TOKEN}} -n {{NAMESPACE}}
+
 gh-token:
-    kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}}
-
-#FIXME(tms): need a generic get-pods command
-get-ips:
-    just get-pods | awk '/^redhatai-llama-4-maverick-17b-128e-instruct-fp8-(decode|prefill)/ {print $6}'
-get-pods:
-    kubectl get pods -n {{NAMESPACE}} -o wide
-
-
-[working-directory: 'llm-d-deployer/quickstart']
-install VALUES="values.yaml":
-    ./llmd-installer.sh \
-        --namespace {{NAMESPACE}} \
-        --storage-class shared-vast --storage-size 300Gi \
-        --values-file $PWD/../../{{VALUES}}
-
-start VALUES="values.yaml": 
-    just install {{VALUES}} && \
-    just hf-token {{HF_TOKEN}} && \
-    just start-bench
-
-[working-directory: 'llm-d-deployer/quickstart']
-uninstall VALUES="values.yaml":
-    ./llmd-installer.sh \
-        --namespace {{NAMESPACE}} \
-        --storage-class shared-vast  --storage-size 300Gi \
-        --values-file $PWD/../../{{VALUES}} \
-        --uninstall
+  kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}}
 
 # Interactive benchmark commands:
 start-bench:

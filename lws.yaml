@@ -45,25 +45,23 @@ spec:
                 workingDir: /app/vllm
                 stdin: true
                 tty: true
-                command:
-                  - "/app/vllm/.venv/bin/vllm"
+                command: ["/bin/sh","-c"]
                 args:
-                  - "serve"
-                  - "Qwen/Qwen3-0.6B"
-                  - "--port"
-                  - "8080"
-                  - "--disable-log-requests"
-                  - "--enforce-eager"
-                  - "--tensor-parallel-size"
-                  - "1"
-                  - "--data-parallel-size"
-                  - "2"
-                  - "--data-parallel-size-local"
-                  - "1"
-                  - "--data-parallel-address"
-                  - "$(LWS_LEADER_ADDRESS)"
-                  - "--data-parallel-rpc-port"
-                  - "5555"
+                  - |
+                    DP_SIZE=2
+                    TP_SIZE=1
+                    DP_SIZE_LOCAL=1
+                    exec /app/vllm/.venv/bin/vllm serve \
+                      Qwen/Qwen3-30B-A3B-FP8 \
+                      --port 8080 \
+                      --disable-log-requests \
+                      --enforce-eager \
+                      --enable-expert-parallel \
+                      --tensor-parallel-size $TP_SIZE \
+                      --data-parallel-size $DP_SIZE \
+                      --data-parallel-size-local $DP_SIZE_LOCAL \
+                      --data-parallel-address $(LWS_LEADER_ADDRESS) \
+                      --data-parallel-rpc-port 5555
                 env:
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
@@ -81,13 +79,13 @@ spec:
 
                 resources:
                   limits:
-                    nvidia.com/gpu: "1"
+                    nvidia.com/gpu: "2"
                     memory: 64Gi
-                    ephemeral-storage: 40Gi
+                    ephemeral-storage: 80Gi
                   requests:
-                    nvidia.com/gpu: "1"
+                    nvidia.com/gpu: "2"
                     memory: 64Gi
-                    ephemeral-storage: 40Gi
+                    ephemeral-storage: 80Gi
                     cpu: 16
                 ports:
                   - containerPort: 8080
@@ -151,28 +149,26 @@ spec:
                 workingDir: /app/vllm
                 stdin: true
                 tty: true
-                command:
-                  - "/app/vllm/.venv/bin/vllm"
+                command: ["/bin/sh","-c"]
                 args:
-                  - "serve"
-                  - "Qwen/Qwen3-0.6B"
-                  - "--port"
-                  - "8080"
-                  - "--disable-log-requests"
-                  - "--enforce-eager"
-                  - "--tensor-parallel-size"
-                  - "1"
-                  - "--data-parallel-size"
-                  - "2"
-                  - "--data-parallel-size-local"
-                  - "1"
-                  - "--data-parallel-address"
-                  - "$(LWS_LEADER_ADDRESS)"
-                  - "--data-parallel-rpc-port"
-                  - "5555"
-                  - "--headless"
-                  - "--data-parallel-start-rank"
-                  - "1"
+                  - |
+                    DP_SIZE=2
+                    TP_SIZE=1
+                    DP_SIZE_LOCAL=1
+                    START_RANK=$(( LWS_WORKER_INDEX * DP_SIZE_LOCAL ))
+                    exec /app/vllm/.venv/bin/vllm serve \
+                      Qwen/Qwen3-30B-A3B-FP8 \
+                      --port 8080 \
+                      --disable-log-requests \
+                      --enforce-eager \
+                      --enable-expert-parallel \
+                      --tensor-parallel-size $TP_SIZE \
+                      --data-parallel-size $DP_SIZE \
+                      --data-parallel-size-local $DP_SIZE_LOCAL \
+                      --data-parallel-address $(LWS_LEADER_ADDRESS) \
+                      --data-parallel-rpc-port 5555 \
+                      --headless \
+                      --data-parallel-start-rank $START_RANK
                 env:
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
@@ -190,13 +186,13 @@ spec:
 
                 resources:
                   limits:
-                    nvidia.com/gpu: "1"
+                    nvidia.com/gpu: "2"
                     memory: 64Gi
-                    ephemeral-storage: 40Gi
+                    ephemeral-storage: 80Gi
                   requests:
-                    nvidia.com/gpu: "1"
+                    nvidia.com/gpu: "2"
                     memory: 64Gi
-                    ephemeral-storage: 40Gi
+                    ephemeral-storage: 80Gi
                     cpu: 16
                 volumeMounts:
                   - name: vllm-repo-storage
