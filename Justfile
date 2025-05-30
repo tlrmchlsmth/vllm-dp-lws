@@ -22,16 +22,16 @@ install:
   rm .init-scripts-cm.yaml.tmp && \
   {{KN}} apply -f lws.yaml && \
   {{KN}} apply -f benchmark-interactive-pod.yaml
+  echo "Installation Complete."
 
 
 uninstall:
   {{KN}} delete leaderworkerset.leaderworkerset.x-k8s.io/vllm ; \
-  {{KN}} delete service vllm ; \
   {{KN}} delete service vllm-leader ; \
   {{KN}} delete pod vllm-0 vllm-0-1 \
     --grace-period=0 \
-    --force \
-  {{KN}} delete configmap init-scripts-cm ; \
+    --force ; \
+  {{KN}} delete configmap vllm-init-scripts-config ; \
   {{KN}} delete pod benchmark-interactive ; \
   kubectl delete namespace {{NAMESPACE}} ; \
   echo "Uninstall Complete."

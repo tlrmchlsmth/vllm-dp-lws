@@ -12,6 +12,16 @@ spec:
                 labels:
                     role: leader
             spec:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: gpu.nvidia.com/model
+                            operator: In
+                            values:
+                              - H200
+
               initContainers:
               - name: vllm-source-installer
                 image: "quay.io/tms/vllm-dev-base:0.0.12" # Your base image
@@ -47,9 +57,6 @@ spec:
                 command: ["/bin/sh","-c"]
                 args:
                   - |
-                    GLOO_SOCKET_IFNAME=$(LWS_LEADER_ADDRESS)
-                    NCCL_SOCKET_IFNAME=$(LWS_LEADER_ADDRESS)
-                    NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME=$(LWS_LEADER_ADDRESS)
                     DP_SIZE=4
                     TP_SIZE=1
                     DP_SIZE_LOCAL=2
@@ -66,8 +73,24 @@ spec:
                       --data-parallel-rpc-port 5555 \
                       --trust-remote-code
                 env:
-#                  - name: VLLM_ALL2ALL_BACKEND
-#                    value: "pplx"
+                    # Needed for GDRCOPY to be used.
+                    # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
+                  - name: NVIDIA_GDRCOPY
+                    value: "enabled"
+                  - name: NCCL_DEBUG
+                    value: "INFO"
+                  - name: NVSHMEM_DEBUG
+                    value: "INFO"
+                  - name: NVSHMEM_IB_ENABLE_IBGDA
+                    value: "true"
+                  - name: VLLM_ALL2ALL_BACKEND
+                    value: "pplx"
+                  - name: GLOO_SOCKET_IFNAME
+                    value: "eth0"
+                  - name: NCCL_SOCKET_IFNAME
+                    value: "eth0"
+                  - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
+                    value: "eth0"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
                   - name: HF_TOKEN
@@ -100,8 +123,8 @@ spec:
                 readinessProbe:
                   tcpSocket:
                     port: 8080
-                  initialDelaySeconds: 600
-                  periodSeconds: 600
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
                 volumeMounts:
                   - name: code-storage
                     mountPath: /app/code
@@ -115,6 +138,7 @@ spec:
                   configMap:
                     name: vllm-init-scripts-config
                     defaultMode: 0755 # Set execute permissions for the script
+                # Needed for NCCL to function
                 - name: dshm
                   emptyDir:
                     medium: Memory
@@ -123,6 +147,16 @@ spec:
 
         workerTemplate:
             spec:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: gpu.nvidia.com/model
+                            operator: In
+                            values:
+                              - H200
+
               initContainers:
               - name: vllm-source-installer
                 image: "quay.io/tms/vllm-dev-base:0.0.12" # Your base image
@@ -158,9 +192,6 @@ spec:
                 command: ["/bin/sh","-c"]
                 args:
                   - |
-                    GLOO_SOCKET_IFNAME=$(LWS_LEADER_ADDRESS)
-                    NCCL_SOCKET_IFNAME=$(LWS_LEADER_ADDRESS)
-                    NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME=$(LWS_LEADER_ADDRESS)
                     DP_SIZE=4
                     TP_SIZE=1
                     DP_SIZE_LOCAL=2
@@ -180,8 +211,24 @@ spec:
                       --data-parallel-start-rank $START_RANK \
                       --trust-remote-code
                 env:
-#                  - name: VLLM_ALL2ALL_BACKEND
-#                    value: "pplx"
+                    # Needed for GDRCOPY to be used.
+                    # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
+                  - name: NVIDIA_GDRCOPY
+                    value: "enabled"
+                  - name: NCCL_DEBUG
+                    value: "INFO"
+                  - name: NVSHMEM_DEBUG
+                    value: "INFO"
+                  - name: NVSHMEM_IB_ENABLE_IBGDA
+                    value: "true"
+                  - name: VLLM_ALL2ALL_BACKEND
+                    value: "pplx"
+                  - name: GLOO_SOCKET_IFNAME
+                    value: "eth0"
+                  - name: NCCL_SOCKET_IFNAME
+                    value: "eth0"
+                  - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
+                    value: "eth0"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
                   - name: HF_TOKEN
@@ -223,10 +270,12 @@ spec:
                   configMap:
                     name: vllm-init-scripts-config
                     defaultMode: 0755 # Set execute permissions for the script
+                # Needed for NCCL to function
                 - name: dshm
                   emptyDir:
                     medium: Memory
                     sizeLimit: 1Gi
+
 ---
 apiVersion: v1
 kind: Service
