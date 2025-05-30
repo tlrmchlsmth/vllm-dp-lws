@@ -12,7 +12,6 @@ spec:
                 labels:
                     role: leader
             spec:
-              terminationGracePeriodSeconds: 6000
               initContainers:
               - name: vllm-source-installer
                 image: "quay.io/tms/vllm-dev-base:0.0.12" # Your base image
@@ -48,11 +47,14 @@ spec:
                 command: ["/bin/sh","-c"]
                 args:
                   - |
+                    GLOO_SOCKET_IFNAME=$(LWS_LEADER_ADDRESS)
+                    NCCL_SOCKET_IFNAME=$(LWS_LEADER_ADDRESS)
+                    NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME=$(LWS_LEADER_ADDRESS)
                     DP_SIZE=4
                     TP_SIZE=1
                     DP_SIZE_LOCAL=2
                     exec /app/code/venv/bin/vllm serve \
-                      Qwen/Qwen3-30B-A3B \
+                      deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct \
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
@@ -61,10 +63,11 @@ spec:
                       --data-parallel-size $DP_SIZE \
                       --data-parallel-size-local $DP_SIZE_LOCAL \
                       --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                      --data-parallel-rpc-port 5555
+                      --data-parallel-rpc-port 5555 \
+                      --trust-remote-code
                 env:
-                  - name: VLLM_ALL2ALL_BACKEND
-                    value: "pplx"
+#                  - name: VLLM_ALL2ALL_BACKEND
+#                    value: "pplx"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
                   - name: HF_TOKEN
@@ -97,8 +100,8 @@ spec:
                 readinessProbe:
                   tcpSocket:
                     port: 8080
-                  initialDelaySeconds: 6000
-                  periodSeconds: 6000
+                  initialDelaySeconds: 600
+                  periodSeconds: 600
                 volumeMounts:
                   - name: code-storage
                     mountPath: /app/code
@@ -120,7 +123,6 @@ spec:
 
         workerTemplate:
             spec:
-              terminationGracePeriodSeconds: 6000
               initContainers:
               - name: vllm-source-installer
                 image: "quay.io/tms/vllm-dev-base:0.0.12" # Your base image
@@ -156,12 +158,15 @@ spec:
                 command: ["/bin/sh","-c"]
                 args:
                   - |
+                    GLOO_SOCKET_IFNAME=$(LWS_LEADER_ADDRESS)
+                    NCCL_SOCKET_IFNAME=$(LWS_LEADER_ADDRESS)
+                    NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME=$(LWS_LEADER_ADDRESS)
                     DP_SIZE=4
                     TP_SIZE=1
                     DP_SIZE_LOCAL=2
                     START_RANK=$(( LWS_WORKER_INDEX * DP_SIZE_LOCAL ))
                     exec /app/code/venv/bin/vllm serve \
-                      Qwen/Qwen3-30B-A3B \
+                      deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct \
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
@@ -172,10 +177,11 @@ spec:
                       --data-parallel-address $(LWS_LEADER_ADDRESS) \
                       --data-parallel-rpc-port 5555 \
                       --headless \
-                      --data-parallel-start-rank $START_RANK
+                      --data-parallel-start-rank $START_RANK \
+                      --trust-remote-code
                 env:
-                  - name: VLLM_ALL2ALL_BACKEND
-                    value: "pplx"
+#                  - name: VLLM_ALL2ALL_BACKEND
+#                    value: "pplx"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
                   - name: HF_TOKEN
