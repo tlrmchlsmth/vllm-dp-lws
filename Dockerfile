@@ -129,7 +129,7 @@ RUN cd /tmp && \
       -G Ninja \
       -DNVSHMEM_PREFIX=${NVSHMEM_PREFIX} \
       -DCMAKE_CUDA_ARCHITECTURES="80;89;90a;100a" \
-      -DNVSHMEM_MPI_SUPPORT=1            \
+      -DNVSHMEM_MPI_SUPPORT=0            \
       -DNVSHMEM_PMIX_SUPPORT=0           \
       -DNVSHMEM_LIBFABRIC_SUPPORT=1      \
       -DNVSHMEM_IBRC_SUPPORT=1           \
@@ -137,7 +137,6 @@ RUN cd /tmp && \
       -DNVSHMEM_BUILD_TESTS=0            \
       -DNVSHMEM_BUILD_EXAMPLES=0         \
       -DNVSHMEM_USE_GDRCOPY=1            \
-      -DMPI_HOME=/usr                    \
       -DLIBFABRIC_HOME=/usr              \
       -DGDRCOPY_HOME=${GDRCOPY_HOME}     \
       .. && \

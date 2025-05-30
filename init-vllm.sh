@@ -38,24 +38,6 @@ fi
 echo "Dependencies installed successfully."
 echo "--------------------------------------------------------------------------"
 
-# --- Checkout specific Git Reference if second argument is provided ---
-# This is the conditional logic you added previously.
-# $1 would be the first arg to init-vllm.sh, $2 the second, etc.
-# If this script is the direct command for an init container, these args come from the Pod spec.
-if [ -n "${1:-}" ]; then # Using ${1:-} to avoid unbound variable error if no args
-  VLLM_GIT_REF="$1"
-  echo "Checking out Git Ref: ${VLLM_GIT_REF} in ${VLLM_SOURCE_DIR}"
-  git -C "${VLLM_SOURCE_DIR}" checkout "${VLLM_GIT_REF}"
-  if [ $? -ne 0 ]; then
-      echo "ERROR: Failed to checkout Git Ref ${VLLM_GIT_REF}."
-      exit 1
-  fi
-else
-  echo "No specific Git Ref provided as first argument. Using default branch."
-fi
-echo "--------------------------------------------------------------------------"
-
-
 echo "--------------------------------------------------------------------------"
 echo "Installing NIXL"
 echo "--------------------------------------------------------------------------"
@@ -66,9 +48,8 @@ echo "--------------------------------------------------------------------------
 echo "Installing vllm"
 echo "--------------------------------------------------------------------------"
 
-# --- Clone vLLM Repository ---
 echo "Cloning vLLM repository from ${GIT_REPO_URL} into ${VLLM_SOURCE_DIR}..."
-git clone "${GIT_REPO_URL}" "${VLLM_SOURCE_DIR}"
+git clone --branch pplx_intranode --single-branch "${GIT_REPO_URL}" "${VLLM_SOURCE_DIR}"
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to clone vLLM repository."
     exit 1
@@ -113,4 +94,3 @@ fi
 echo "--------------------------------------------------------------------------"
 echo "vLLM Initialization Script Completed Successfully!"
 echo "=========================================================================="
-

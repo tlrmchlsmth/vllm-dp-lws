@@ -15,7 +15,7 @@ spec:
               terminationGracePeriodSeconds: 6000
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.11" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.12" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -40,7 +40,7 @@ spec:
 
               containers:
               - name: vllm-leader
-                image: "quay.io/tms/vllm-dev-base:0.0.11" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.12" # Use the same base image
                 imagePullPolicy: Always
                 workingDir: /app/code
                 stdin: true
@@ -48,11 +48,11 @@ spec:
                 command: ["/bin/sh","-c"]
                 args:
                   - |
-                    DP_SIZE=2
+                    DP_SIZE=4
                     TP_SIZE=1
-                    DP_SIZE_LOCAL=1
+                    DP_SIZE_LOCAL=2
                     exec /app/code/venv/bin/vllm serve \
-                      Qwen/Qwen3-30B-A3B-FP8 \
+                      Qwen/Qwen3-30B-A3B \
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
@@ -63,6 +63,8 @@ spec:
                       --data-parallel-address $(LWS_LEADER_ADDRESS) \
                       --data-parallel-rpc-port 5555
                 env:
+                  - name: VLLM_ALL2ALL_BACKEND
+                    value: "pplx"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
                   - name: HF_TOKEN
@@ -80,21 +82,23 @@ spec:
 
                 resources:
                   limits:
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "4"
                     memory: 64Gi
-                    ephemeral-storage: 80Gi
+                    ephemeral-storage: 128Gi
+                    rdma/ib: 1
                   requests:
-                    nvidia.com/gpu: "2"
+                    cpu: 8
                     memory: 64Gi
-                    ephemeral-storage: 80Gi
-                    cpu: 16
+                    ephemeral-storage: 128Gi
+                    nvidia.com/gpu: "4"
+                    rdma/ib: 1
                 ports:
                   - containerPort: 8080
                 readinessProbe:
                   tcpSocket:
                     port: 8080
-                  initialDelaySeconds: 600
-                  periodSeconds: 600
+                  initialDelaySeconds: 6000
+                  periodSeconds: 6000
                 volumeMounts:
                   - name: code-storage
                     mountPath: /app/code
@@ -119,7 +123,7 @@ spec:
               terminationGracePeriodSeconds: 6000
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.11" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.12" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -144,7 +148,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-base:0.0.11" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.12" # Use the same base image
                 imagePullPolicy: Always
                 workingDir: /app/code
                 stdin: true
@@ -152,12 +156,12 @@ spec:
                 command: ["/bin/sh","-c"]
                 args:
                   - |
-                    DP_SIZE=2
+                    DP_SIZE=4
                     TP_SIZE=1
-                    DP_SIZE_LOCAL=1
+                    DP_SIZE_LOCAL=2
                     START_RANK=$(( LWS_WORKER_INDEX * DP_SIZE_LOCAL ))
                     exec /app/code/venv/bin/vllm serve \
-                      Qwen/Qwen3-30B-A3B-FP8 \
+                      Qwen/Qwen3-30B-A3B \
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
@@ -170,6 +174,8 @@ spec:
                       --headless \
                       --data-parallel-start-rank $START_RANK
                 env:
+                  - name: VLLM_ALL2ALL_BACKEND
+                    value: "pplx"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
                   - name: HF_TOKEN
@@ -187,14 +193,16 @@ spec:
 
                 resources:
                   limits:
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "4"
                     memory: 64Gi
-                    ephemeral-storage: 80Gi
+                    ephemeral-storage: 128Gi
+                    rdma/ib: 1
                   requests:
-                    nvidia.com/gpu: "2"
+                    cpu: 8
                     memory: 64Gi
-                    ephemeral-storage: 80Gi
-                    cpu: 16
+                    ephemeral-storage: 128Gi
+                    nvidia.com/gpu: "4"
+                    rdma/ib: 1
                 volumeMounts:
                   - name: code-storage
                     mountPath: /app/code
