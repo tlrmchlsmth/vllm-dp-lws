@@ -24,7 +24,7 @@ spec:
 
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.13" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.14" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -49,7 +49,7 @@ spec:
 
               containers:
               - name: vllm-leader
-                image: "quay.io/tms/vllm-dev-base:0.0.13" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.14" # Use the same base image
                 imagePullPolicy: Always
                 workingDir: /app/code
                 stdin: true
@@ -77,18 +77,32 @@ spec:
                     # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
                     value: "enabled"
+#                  - name: NVIDIA_NVSWITCH
+#                    value: "enabled"
+#                  - name: NVIDIA_GDS # for GPU direct storage.
+#                    value: "enabled"
+#                  - name: NVIDIA_MOFED # Crashes with this.
+#                    value: "enabled"
                   - name: NCCL_DEBUG
                     value: "INFO"
                   - name: NVSHMEM_DEBUG
                     value: "INFO"
-                  - name: NVSHMEM_IB_ENABLE_IBGDA
-                    value: "true"
+#                  - name: NVSHMEM_REMOTE_TRANSPORT
+#                    value: "ibrc"
+#                  - name: NVSHMEM_IB_ENABLE_IBGDA
+#                    value: "true"
+#                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
+#                    value: "true"
+#                  - name: NVSHMEM_HCA_PE_MAPPING
+#                    value: "ibp0:1:1,ibp1:1:1,ibp2:1:1,ibp3:1:1,ibp4:1:1,ibp5:1:1,ibp6:1:1,ibp7:1:1"
                   - name: VLLM_ALL2ALL_BACKEND
                     value: "pplx"
                   - name: GLOO_SOCKET_IFNAME
                     value: "eth0"
                   - name: NCCL_SOCKET_IFNAME
                     value: "eth0"
+                  - name: NCCL_IB_HCA
+                    value: "ibp"
                   - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
                     value: "eth0"
                   - name: VLLM_LOGGING_LEVEL
@@ -164,7 +178,7 @@ spec:
 
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.13" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.14" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -189,7 +203,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-base:0.0.13" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.14" # Use the same base image
                 imagePullPolicy: Always
                 workingDir: /app/code
                 stdin: true
@@ -220,18 +234,34 @@ spec:
                     # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
                     value: "enabled"
+#                  - name: NVIDIA_NVSWITCH
+#                    value: "enabled"
+#                  - name: NVIDIA_GDS
+#                    value: "enabled"
+#                  - name: NVIDIA_MOFED
+#                    value: "enabled"
                   - name: NCCL_DEBUG
                     value: "INFO"
                   - name: NVSHMEM_DEBUG
                     value: "INFO"
-                  - name: NVSHMEM_IB_ENABLE_IBGDA
+                  - name: NVSHMEM_INFO
                     value: "true"
+#                  - name: NVSHMEM_REMOTE_TRANSPORT
+#                    value: "ibrc"
+#                  - name: NVSHMEM_IB_ENABLE_IBGDA
+#                    value: "true"
+#                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
+#                    value: "true"
+#                  - name: NVSHMEM_HCA_PE_MAPPING
+#                    value: "ibp0:1:1,ibp1:1:1,ibp2:1:1,ibp3:1:1,ibp4:1:1,ibp5:1:1,ibp6:1:1,ibp7:1:1"
                   - name: VLLM_ALL2ALL_BACKEND
                     value: "pplx"
                   - name: GLOO_SOCKET_IFNAME
                     value: "eth0"
                   - name: NCCL_SOCKET_IFNAME
                     value: "eth0"
+                  - name: NCCL_IB_HCA
+                    value: "ibp"
                   - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
                     value: "eth0"
                   - name: VLLM_LOGGING_LEVEL

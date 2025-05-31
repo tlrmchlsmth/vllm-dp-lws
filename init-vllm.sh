@@ -84,6 +84,8 @@ echo "Changing directory to ${PPLX_SOURCE_DIR} for PPLX installation..."
 cd ${PPLX_SOURCE_DIR} || { echo "ERROR: Failed to change directory to ${PPLX_SOURCE_DIR}."; exit 1; }
 echo "Current directory: $(pwd)"
 echo "Installing pplx-kernels in editable mode using ${UV}..."
+${UV} pip install --python ${PYTHON} cmake
+source ${VENV_PATH}/bin/activate
 TORCH_CUDA_ARCH_LIST=9.0a+PTX ${PYTHON} setup.py bdist_wheel
 ${UV} pip install --python ${PYTHON} dist/*.whl
 if [ $? -ne 0 ]; then
