@@ -12,10 +12,19 @@ spec:
                 labels:
                     role: leader
             spec:
-              terminationGracePeriodSeconds: 6000
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: gpu.nvidia.com/model
+                            operator: In
+                            values:
+                              - H200
+
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.9" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.14" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -26,8 +35,8 @@ spec:
                         key: GH_TOKEN
                         optional: true
                 volumeMounts:
-                  - name: vllm-repo-storage
-                    mountPath: /app/vllm
+                  - name: code-storage
+                    mountPath: /app/code
                   - name: init-scripts-volume # Mounts the directory containing input scripts
                     mountPath: /init-scripts
                 resources:
@@ -40,19 +49,19 @@ spec:
 
               containers:
               - name: vllm-leader
-                image: "quay.io/tms/vllm-dev-base:0.0.9" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.14" # Use the same base image
                 imagePullPolicy: Always
-                workingDir: /app/vllm
+                workingDir: /app/code
                 stdin: true
                 tty: true
                 command: ["/bin/sh","-c"]
                 args:
                   - |
-                    DP_SIZE=2
+                    DP_SIZE=4
                     TP_SIZE=1
-                    DP_SIZE_LOCAL=1
-                    exec /app/vllm/.venv/bin/vllm serve \
-                      Qwen/Qwen3-30B-A3B-FP8 \
+                    DP_SIZE_LOCAL=2
+                    exec /app/code/venv/bin/vllm serve \
+                      deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct \
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
@@ -61,8 +70,41 @@ spec:
                       --data-parallel-size $DP_SIZE \
                       --data-parallel-size-local $DP_SIZE_LOCAL \
                       --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                      --data-parallel-rpc-port 5555
+                      --data-parallel-rpc-port 5555 \
+                      --trust-remote-code
                 env:
+                    # Needed for GDRCOPY to be used.
+                    # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
+                  - name: NVIDIA_GDRCOPY
+                    value: "enabled"
+#                  - name: NVIDIA_NVSWITCH
+#                    value: "enabled"
+#                  - name: NVIDIA_GDS # for GPU direct storage.
+#                    value: "enabled"
+#                  - name: NVIDIA_MOFED # Crashes with this.
+#                    value: "enabled"
+                  - name: NCCL_DEBUG
+                    value: "INFO"
+                  - name: NVSHMEM_DEBUG
+                    value: "INFO"
+#                  - name: NVSHMEM_REMOTE_TRANSPORT
+#                    value: "ibrc"
+#                  - name: NVSHMEM_IB_ENABLE_IBGDA
+#                    value: "true"
+#                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
+#                    value: "true"
+#                  - name: NVSHMEM_HCA_PE_MAPPING
+#                    value: "ibp0:1:1,ibp1:1:1,ibp2:1:1,ibp3:1:1,ibp4:1:1,ibp5:1:1,ibp6:1:1,ibp7:1:1"
+                  - name: VLLM_ALL2ALL_BACKEND
+                    value: "pplx"
+                  - name: GLOO_SOCKET_IFNAME
+                    value: "eth0"
+                  - name: NCCL_SOCKET_IFNAME
+                    value: "eth0"
+                  - name: NCCL_IB_HCA
+                    value: "ibp"
+                  - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
+                    value: "eth0"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
                   - name: HF_TOKEN
@@ -78,37 +120,44 @@ spec:
                         key: GH_TOKEN
                         optional: true
 
+                securityContext:
+                  capabilities:
+                    add: [ "IPC_LOCK" ]
                 resources:
                   limits:
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "4"
                     memory: 64Gi
-                    ephemeral-storage: 80Gi
+                    ephemeral-storage: 128Gi
+                    rdma/ib: 1
+#                    rdma/hca_shared_devices_a: 1
                   requests:
-                    nvidia.com/gpu: "2"
+                    cpu: 8
                     memory: 64Gi
-                    ephemeral-storage: 80Gi
-                    cpu: 16
+                    ephemeral-storage: 128Gi
+                    nvidia.com/gpu: "4"
+                    rdma/ib: 1
+#                    rdma/hca_shared_devices_a: 1
                 ports:
                   - containerPort: 8080
                 readinessProbe:
                   tcpSocket:
                     port: 8080
-                  initialDelaySeconds: 600
-                  periodSeconds: 600
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
                 volumeMounts:
-                  - name: vllm-repo-storage
-                    mountPath: /app/vllm
+                  - name: code-storage
+                    mountPath: /app/code
                   - mountPath: /dev/shm
                     name: dshm
               volumes:
-                # Shared volume for vLLM source code, cloned by init container into /app/vllm
-                - name: vllm-repo-storage # This emptyDir will be mounted at /app/vllm
+                - name: code-storage
                   emptyDir: {}
                 # Volume for the init script from ConfigMap
                 - name: init-scripts-volume
                   configMap:
                     name: vllm-init-scripts-config
                     defaultMode: 0755 # Set execute permissions for the script
+                # Needed for NCCL to function
                 - name: dshm
                   emptyDir:
                     medium: Memory
@@ -117,10 +166,19 @@ spec:
 
         workerTemplate:
             spec:
-              terminationGracePeriodSeconds: 6000
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: gpu.nvidia.com/model
+                            operator: In
+                            values:
+                              - H200
+
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.9" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.14" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -131,8 +189,8 @@ spec:
                         key: GH_TOKEN
                         optional: true
                 volumeMounts:
-                  - name: vllm-repo-storage
-                    mountPath: /app/vllm
+                  - name: code-storage
+                    mountPath: /app/code
                   - name: init-scripts-volume # Mounts the directory containing input scripts
                     mountPath: /init-scripts
                 resources:
@@ -145,20 +203,20 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-base:0.0.9" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.14" # Use the same base image
                 imagePullPolicy: Always
-                workingDir: /app/vllm
+                workingDir: /app/code
                 stdin: true
                 tty: true
                 command: ["/bin/sh","-c"]
                 args:
                   - |
-                    DP_SIZE=2
+                    DP_SIZE=4
                     TP_SIZE=1
-                    DP_SIZE_LOCAL=1
+                    DP_SIZE_LOCAL=2
                     START_RANK=$(( LWS_WORKER_INDEX * DP_SIZE_LOCAL ))
-                    exec /app/vllm/.venv/bin/vllm serve \
-                      Qwen/Qwen3-30B-A3B-FP8 \
+                    exec /app/code/venv/bin/vllm serve \
+                      deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct \
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
@@ -169,8 +227,43 @@ spec:
                       --data-parallel-address $(LWS_LEADER_ADDRESS) \
                       --data-parallel-rpc-port 5555 \
                       --headless \
-                      --data-parallel-start-rank $START_RANK
+                      --data-parallel-start-rank $START_RANK \
+                      --trust-remote-code
                 env:
+                    # Needed for GDRCOPY to be used.
+                    # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
+                  - name: NVIDIA_GDRCOPY
+                    value: "enabled"
+#                  - name: NVIDIA_NVSWITCH
+#                    value: "enabled"
+#                  - name: NVIDIA_GDS
+#                    value: "enabled"
+#                  - name: NVIDIA_MOFED
+#                    value: "enabled"
+                  - name: NCCL_DEBUG
+                    value: "INFO"
+                  - name: NVSHMEM_DEBUG
+                    value: "INFO"
+                  - name: NVSHMEM_INFO
+                    value: "true"
+#                  - name: NVSHMEM_REMOTE_TRANSPORT
+#                    value: "ibrc"
+#                  - name: NVSHMEM_IB_ENABLE_IBGDA
+#                    value: "true"
+#                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
+#                    value: "true"
+#                  - name: NVSHMEM_HCA_PE_MAPPING
+#                    value: "ibp0:1:1,ibp1:1:1,ibp2:1:1,ibp3:1:1,ibp4:1:1,ibp5:1:1,ibp6:1:1,ibp7:1:1"
+                  - name: VLLM_ALL2ALL_BACKEND
+                    value: "pplx"
+                  - name: GLOO_SOCKET_IFNAME
+                    value: "eth0"
+                  - name: NCCL_SOCKET_IFNAME
+                    value: "eth0"
+                  - name: NCCL_IB_HCA
+                    value: "ibp"
+                  - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
+                    value: "eth0"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
                   - name: HF_TOKEN
@@ -186,34 +279,43 @@ spec:
                         key: GH_TOKEN
                         optional: true
 
+                securityContext:
+                  capabilities:
+                    add: [ "IPC_LOCK" ]
                 resources:
                   limits:
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "4"
                     memory: 64Gi
-                    ephemeral-storage: 80Gi
+                    ephemeral-storage: 128Gi
+                    rdma/ib: 1
+#                    rdma/hca_shared_devices_a: 1
                   requests:
-                    nvidia.com/gpu: "2"
+                    cpu: 8
                     memory: 64Gi
-                    ephemeral-storage: 80Gi
-                    cpu: 16
+                    ephemeral-storage: 128Gi
+                    nvidia.com/gpu: "4"
+                    rdma/ib: 1
+#                    rdma/hca_shared_devices_a: 1
                 volumeMounts:
-                  - name: vllm-repo-storage
-                    mountPath: /app/vllm
+                  - name: code-storage
+                    mountPath: /app/code
                   - mountPath: /dev/shm
                     name: dshm
               volumes:
                 # Shared volume for vLLM source code, cloned by init container into /app/vllm
-                - name: vllm-repo-storage # This emptyDir will be mounted at /app/vllm
+                - name: code-storage # This emptyDir will be mounted at /app/vllm
                   emptyDir: {}
                 # Volume for the init script from ConfigMap
                 - name: init-scripts-volume
                   configMap:
                     name: vllm-init-scripts-config
                     defaultMode: 0755 # Set execute permissions for the script
+                # Needed for NCCL to function
                 - name: dshm
                   emptyDir:
                     medium: Memory
                     sizeLimit: 1Gi
+
 ---
 apiVersion: v1
 kind: Service
