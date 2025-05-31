@@ -1,7 +1,7 @@
 apiVersion: leaderworkerset.x-k8s.io/v1
 kind: LeaderWorkerSet
 metadata:
-    name: vllm
+    name: __LWS_NAME__
 spec:
     replicas: 1
     leaderWorkerTemplate:
@@ -65,6 +65,8 @@ spec:
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
+                      --kv-transfer-config \
+                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
                       --enable-expert-parallel \
                       --tensor-parallel-size $TP_SIZE \
                       --data-parallel-size $DP_SIZE \
@@ -87,14 +89,14 @@ spec:
                     value: "INFO"
                   - name: NVSHMEM_DEBUG
                     value: "INFO"
-#                  - name: NVSHMEM_REMOTE_TRANSPORT
-#                    value: "ibrc"
+                  - name: NVSHMEM_REMOTE_TRANSPORT
+                    value: "ibrc"
 #                  - name: NVSHMEM_IB_ENABLE_IBGDA
 #                    value: "true"
 #                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
 #                    value: "true"
-#                  - name: NVSHMEM_HCA_PE_MAPPING
-#                    value: "ibp0:1:1,ibp1:1:1,ibp2:1:1,ibp3:1:1,ibp4:1:1,ibp5:1:1,ibp6:1:1,ibp7:1:1"
+#                  - name: NVSHMEM_HCA_LIST
+#                    value: "ibp0:1,ibp1:1,ibp2:1,ibp3:1,ibp4:1,ibp5:1,ibp6:1,ibp7:1"
                   - name: VLLM_ALL2ALL_BACKEND
                     value: "pplx"
                   - name: GLOO_SOCKET_IFNAME
@@ -125,18 +127,16 @@ spec:
                     add: [ "IPC_LOCK" ]
                 resources:
                   limits:
-                    nvidia.com/gpu: "4"
+                    nvidia.com/gpu: "2"
                     memory: 64Gi
                     ephemeral-storage: 128Gi
                     rdma/ib: 1
-#                    rdma/hca_shared_devices_a: 1
                   requests:
                     cpu: 8
                     memory: 64Gi
                     ephemeral-storage: 128Gi
-                    nvidia.com/gpu: "4"
+                    nvidia.com/gpu: "2"
                     rdma/ib: 1
-#                    rdma/hca_shared_devices_a: 1
                 ports:
                   - containerPort: 8080
                 readinessProbe:
@@ -220,6 +220,8 @@ spec:
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
+                      --kv-transfer-config \
+                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
                       --enable-expert-parallel \
                       --tensor-parallel-size $TP_SIZE \
                       --data-parallel-size $DP_SIZE \
@@ -244,16 +246,14 @@ spec:
                     value: "INFO"
                   - name: NVSHMEM_DEBUG
                     value: "INFO"
-                  - name: NVSHMEM_INFO
-                    value: "true"
-#                  - name: NVSHMEM_REMOTE_TRANSPORT
-#                    value: "ibrc"
+                  - name: NVSHMEM_REMOTE_TRANSPORT
+                    value: "ibrc"
 #                  - name: NVSHMEM_IB_ENABLE_IBGDA
 #                    value: "true"
 #                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
 #                    value: "true"
-#                  - name: NVSHMEM_HCA_PE_MAPPING
-#                    value: "ibp0:1:1,ibp1:1:1,ibp2:1:1,ibp3:1:1,ibp4:1:1,ibp5:1:1,ibp6:1:1,ibp7:1:1"
+#                  - name: NVSHMEM_HCA_LIST
+#                    value: "ibp0:1,ibp1:1,ibp2:1,ibp3:1,ibp4:1,ibp5:1,ibp6:1,ibp7:1"
                   - name: VLLM_ALL2ALL_BACKEND
                     value: "pplx"
                   - name: GLOO_SOCKET_IFNAME
@@ -284,18 +284,16 @@ spec:
                     add: [ "IPC_LOCK" ]
                 resources:
                   limits:
-                    nvidia.com/gpu: "4"
+                    nvidia.com/gpu: "2"
                     memory: 64Gi
                     ephemeral-storage: 128Gi
                     rdma/ib: 1
-#                    rdma/hca_shared_devices_a: 1
                   requests:
                     cpu: 8
                     memory: 64Gi
                     ephemeral-storage: 128Gi
-                    nvidia.com/gpu: "4"
+                    nvidia.com/gpu: "2"
                     rdma/ib: 1
-#                    rdma/hca_shared_devices_a: 1
                 volumeMounts:
                   - name: code-storage
                     mountPath: /app/code
@@ -320,7 +318,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-    name: vllm-leader
+    name: __SERVICE_NAME__
 spec:
     ports:
         - name: http
@@ -328,6 +326,6 @@ spec:
           protocol: TCP
           targetPort: 8080
     selector:
-        leaderworkerset.sigs.k8s.io/name: vllm
+        leaderworkerset.sigs.k8s.io/name: __LWS_NAME__
         role: leader
     type: ClusterIP

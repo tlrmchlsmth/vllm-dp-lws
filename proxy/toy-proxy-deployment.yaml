@@ -1,0 +1,68 @@
+# toy-proxy-deployment.yaml
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: toy-proxy
+  labels:
+    app: toy-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: toy-proxy
+  template:
+    metadata:
+      labels:
+        app: toy-proxy
+    spec:
+      containers:
+      - name: toy-proxy
+        image: quay.io/tms/pd-disagg-proxy-server:0.0.8
+        imagePullPolicy: Always
+        args:
+          - "--host"
+          - "0.0.0.0"
+          - "--port"
+          - "8000"
+          # --- Prefiller Instances ---
+          - "--prefiller-hosts"
+          - "vllm-prefill-leader"
+          - "--prefiller-ports"
+          - "8080"
+          # --- Decoder Instances ---
+          - "--decoder-hosts"
+          - "vllm-decode-leader"
+          - "--decoder-ports"
+          - "8080"
+        env:
+        ports:
+        - name: http # Naming the port
+          containerPort: 8000
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /healthcheck
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        livenessProbe:
+          httpGet:
+            path: /healthcheck
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 45
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"

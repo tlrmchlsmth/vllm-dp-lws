@@ -1,0 +1,12 @@
+build VERSION:
+  podman build --platform linux/amd64 -t quay.io/tms/pd-disagg-proxy-server:{{VERSION}} .
+
+push VERSION:
+  podman push quay.io/tms/pd-disagg-proxy-server:{{VERSION}}
+
+start:
+  kubectl apply -f custom-proxy-deployment.yaml && \
+  kubectl apply -f custom-proxy-service.yaml
+
+delete:
+  kubectl delete -n llmd-test --now deployment custom-llm-proxy 

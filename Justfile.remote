@@ -1,5 +1,6 @@
+BASE_URL := __BASE_URL__
+
 # Use this Justfile within the cluster.
-BASE_URL := "http://vllm-leader:8080"
 
 eval:
     lm_eval --model local-completions --tasks gsm8k \

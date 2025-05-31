@@ -1,0 +1,16 @@
+# toy-proxy-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: toy-proxy-service
+  labels:
+    app-role: toy-proxy-access # Label for the service itself
+spec:
+  selector:
+    app: toy-proxy # This MUST match the label on your custom proxy pods
+  ports:
+    - name: http-proxy
+      protocol: TCP
+      port: 8080 # Port the service will expose (e.g., standard HTTP port)
+      targetPort: 8000 # Port your custom proxy container listens on (containerPort in deployment)
+  type: ClusterIP
