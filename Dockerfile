@@ -20,36 +20,43 @@ ENV NIXL_PREFIX=/usr/local/nixl
 ENV NVSHMEM_VERSION=3.2.5-1
 ENV NVSHMEM_PREFIX=/opt/nvshmem-${NVSHMEM_VERSION}
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    # Python and related tools
-    python${PYTHON_VERSION} \
-    python${PYTHON_VERSION}-venv \
-    python3-pip \
-    python3-pybind11 \
-    python${PYTHON_VERSION}-dev \
-    # Common dev tools
-    git \
-    wget curl \
-    ca-certificates \
-    htop \
-    iputils-ping \
-    net-tools \
-    vim ripgrep bat clangd fuse fzf \
-    nodejs npm clang fd-find xclip \
-    zsh \
-    # Build tools for UCX, NVSHMEM, etc.
-    build-essential \
-    autoconf automake libtool pkg-config \
-    meson ninja-build cmake \
-    # Other dependencies
-    libnuma-dev \
-    # RDMA stack (Mellanox OFED)
-    ibverbs-utils libibverbs-dev libibumad3 libibumad-dev \
-    librdmacm-dev rdmacm-utils infiniband-diags \
-    # MPI / PMIx / libfabric for NVSHMEM
-    libopenmpi-dev openmpi-bin \
-    libpmix-dev libfabric-dev \
+RUN apt-get -qq update && \
+    apt-get -qq install -y --no-install-recommends \
+      # Python and related tools
+      python${PYTHON_VERSION} \
+      python${PYTHON_VERSION}-venv \
+      python3-pip \
+      python3-pybind11 \
+      python${PYTHON_VERSION}-dev \
+      # Common dev tools
+      git \
+      wget curl \
+      ca-certificates \
+      htop \
+      iputils-ping net-tools \
+      vim ripgrep bat clangd fuse fzf \
+      nodejs npm clang fd-find xclip \
+      zsh \
+      # Build tools for UCX, NVSHMEM, etc.
+      build-essential \
+      autoconf automake libtool pkg-config \
+      meson ninja-build cmake \
+      # Other dependencies
+      libnuma1 libsubunit0 libpci-dev \
+      # MPI / PMIx / libfabric for NVSHMEM
+      libopenmpi-dev openmpi-bin \
+      libpmix-dev libfabric-dev \
+      datacenter-gpu-manager && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Mellanox OFED (latest)
+RUN wget -qO - https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox | apt-key add -
+RUN cd /etc/apt/sources.list.d/ && wget https://linux.mellanox.com/public/repo/mlnx_ofed/latest/ubuntu24.04/mellanox_mlnx_ofed.list
+
+RUN apt-get -qq update \
+    && apt-get -qq install -y --no-install-recommends \
+      ibverbs-utils libibverbs-dev libibumad3 libibumad-dev librdmacm-dev rdmacm-utils infiniband-diags ibverbs-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # --- Build and Install GDRCopy from Source ---

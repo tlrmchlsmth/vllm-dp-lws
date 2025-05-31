@@ -24,7 +24,7 @@ spec:
 
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.12" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.13" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -49,7 +49,7 @@ spec:
 
               containers:
               - name: vllm-leader
-                image: "quay.io/tms/vllm-dev-base:0.0.12" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.13" # Use the same base image
                 imagePullPolicy: Always
                 workingDir: /app/code
                 stdin: true
@@ -106,18 +106,23 @@ spec:
                         key: GH_TOKEN
                         optional: true
 
+                securityContext:
+                  capabilities:
+                    add: [ "IPC_LOCK" ]
                 resources:
                   limits:
                     nvidia.com/gpu: "4"
                     memory: 64Gi
                     ephemeral-storage: 128Gi
                     rdma/ib: 1
+#                    rdma/hca_shared_devices_a: 1
                   requests:
                     cpu: 8
                     memory: 64Gi
                     ephemeral-storage: 128Gi
                     nvidia.com/gpu: "4"
                     rdma/ib: 1
+#                    rdma/hca_shared_devices_a: 1
                 ports:
                   - containerPort: 8080
                 readinessProbe:
@@ -159,7 +164,7 @@ spec:
 
               initContainers:
               - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.12" # Your base image
+                image: "quay.io/tms/vllm-dev-base:0.0.13" # Your base image
                 imagePullPolicy: Always
                 command: ["/init-scripts/init-vllm.sh"]
                 env:
@@ -184,7 +189,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-base:0.0.12" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.13" # Use the same base image
                 imagePullPolicy: Always
                 workingDir: /app/code
                 stdin: true
@@ -244,18 +249,23 @@ spec:
                         key: GH_TOKEN
                         optional: true
 
+                securityContext:
+                  capabilities:
+                    add: [ "IPC_LOCK" ]
                 resources:
                   limits:
                     nvidia.com/gpu: "4"
                     memory: 64Gi
                     ephemeral-storage: 128Gi
                     rdma/ib: 1
+#                    rdma/hca_shared_devices_a: 1
                   requests:
                     cpu: 8
                     memory: 64Gi
                     ephemeral-storage: 128Gi
                     nvidia.com/gpu: "4"
                     rdma/ib: 1
+#                    rdma/hca_shared_devices_a: 1
                 volumeMounts:
                   - name: code-storage
                     mountPath: /app/code
