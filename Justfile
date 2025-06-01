@@ -60,7 +60,7 @@ uninstall:
     --grace-period=0 \
     --force ; \
   {{KN}} delete configmap vllm-init-scripts-config ; \
-  {{KN}} delete --now deployment custom-llm-proxy ; \
+  {{KN}} delete --now deployment toy-llm-proxy ; \
   kubectl delete namespace {{NAMESPACE}} ; \
   echo "Uninstall Complete."
 
