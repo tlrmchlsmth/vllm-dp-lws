@@ -62,8 +62,8 @@ spec:
                   - name: VLLM_BRANCH
                     value: "fix-dp-nixl-xchange"
                   - name: VLLM_ALL2ALL_BACKEND
-#                    value: "naive"
-                    value: "pplx"
+                    value: "naive"
+#                    value: "pplx"
 #                    value: "deepep_high_throughput"
 #                    value: "deepep_low_latency"
 #
@@ -123,7 +123,7 @@ spec:
                     add: [ "IPC_LOCK" ]
                 resources:
                   limits:
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "4"
                     memory: 64Gi
                     ephemeral-storage: 256Gi
                     rdma/ib: 1
@@ -131,7 +131,7 @@ spec:
                     cpu: 8
                     memory: 64Gi
                     ephemeral-storage: 256Gi
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "4"
                     rdma/ib: 1
                 ports:
                   - containerPort: 8080
@@ -213,8 +213,8 @@ spec:
                   - name: VLLM_BRANCH
                     value: "fix-dp-nixl-xchange"
                   - name: VLLM_ALL2ALL_BACKEND
-#                    value: "naive"
-                    value: "pplx"
+                    value: "naive"
+#                    value: "pplx"
 #                    value: "deepep_high_throughput"
 #                    value: "deepep_low_latency"
 #
@@ -274,7 +274,7 @@ spec:
                     add: [ "IPC_LOCK" ]
                 resources:
                   limits:
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "4"
                     memory: 64Gi
                     ephemeral-storage: 256Gi
                     rdma/ib: 1
@@ -282,7 +282,7 @@ spec:
                     cpu: 8
                     memory: 64Gi
                     ephemeral-storage: 256Gi
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "4"
                     rdma/ib: 1
                 volumeMounts:
                   - mountPath: /dev/shm
