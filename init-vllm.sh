@@ -1,98 +1,122 @@
-#!/bin/bash
-set -euo pipefail # Ensures script fails on errors and undefined variables
+#!/usr/bin/env bash
+##############################################################################
+# vLLM + PPLX + DeepEP bootstrap script
+# - Creates a virtual-env with uv
+# - Installs base deps, NIXL, vLLM, pplx-kernels and DeepEP
+# - Idempotent: re-runs will update existing repos instead of recloning
+##############################################################################
 
-echo "=========================================================================="
-echo "Starting vLLM Initialization Script"
-echo "--------------------------------------------------------------------------"
+set -euo pipefail
+trap 'echo "ERROR: Script failed on line $LINENO"; exit 1' ERR
 
-# Configuration
-VLLM_SOURCE_DIR="${VLLM_SOURCE_DIR:-/app/code/vllm}" # Default if not set externally
-PPLX_SOURCE_DIR="${PPXL_SOURCE_DIR:-/app/code/pplx}"
+###############################  helpers  ####################################
+banner() { printf '\n========== %s ==========\n' "$*"; }
 
+# Re-usable “uv pip install” wrapper (adds --no-cache-dir by default)
+upip() { "${UV}" pip install --python "${PYTHON}" --no-cache-dir "$@"; }
+
+# Clone the repo if missing, otherwise fast-forward to the requested branch
+clone_or_update() {
+  local url=$1 dir=$2 branch=${3:-main}
+  if [[ -d "${dir}/.git" ]]; then
+    banner "Updating $(basename "${dir}")"
+    git -C "${dir}" fetch --depth=1 origin "${branch}"
+    git -C "${dir}" checkout "${branch}"
+    git -C "${dir}" reset --hard "origin/${branch}"
+  else
+    banner "Cloning $(basename "${dir}")"
+    git clone --depth=1 --branch "${branch}" "${url}" "${dir}"
+  fi
+}
+
+##############################  configuration  ###############################
+# Locations (override via env if desired)
+VLLM_SOURCE_DIR="${VLLM_SOURCE_DIR:-/app/code/vllm}"
+PPLX_SOURCE_DIR="${PPLX_SOURCE_DIR:-/app/code/pplx}"
+DEEPEP_SOURCE_DIR="${DEEPEP_SOURCE_DIR:-/app/code/DeepEP}"
 VENV_PATH="/app/code/venv"
-PYTHON_COMMAND="${PYTHON_COMMAND:-python${PYTHON_VERSION}}" # Uses PYTHON_VERSION from Dockerfile ENV
-UV="${UV_INSTALL_PATH:-/usr/local/bin/uv}" # Where to install/find uv
-GIT_REPO_URL="https://github.com/vllm-project/vllm.git" # TODO: Fix
 
-echo "VLLM Repository URL: ${GIT_REPO_URL}"
-echo "VLLM Source Directory: ${VLLM_SOURCE_DIR}"
-echo "Python Virtual Environment: ${VENV_PATH}"
-echo "Python command for venv: ${PYTHON_COMMAND}"
-echo "uv executable path: ${UV}"
-echo "=========================================================================="
+# Python / toolchain
+PYTHON_VERSION="${PYTHON_VERSION:-3.12}"          # e.g. 3.12
+PYTHON_COMMAND="${PYTHON_COMMAND:-python${PYTHON_VERSION}}"
+PY_TAG="${PYTHON_VERSION//./}"                   # 3.12 → 312 for wheel tag
+UV="${UV_INSTALL_PATH:-/usr/local/bin/uv}"
 
-echo "--------------------------------------------------------------------------"
-echo "Creating venv at ${VENV_PATH}"
-echo "--------------------------------------------------------------------------"
-${UV} venv ${VENV_PATH}
-PYTHON="${VENV_PATH}/bin/python"
-echo "--------------------------------------------------------------------------"
-
-# --- Install dependencies from requirements.txt ---
-echo "Installing dependencies into ${VENV_PATH}..."
-"${UV}" pip install --python "${PYTHON}" --no-cache-dir pandas datasets rust-just regex setuptools-scm
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to install requirements from ${REQUIREMENTS_FILE}."
-    exit 1
-fi
-echo "Dependencies installed successfully."
-echo "--------------------------------------------------------------------------"
-
-echo "--------------------------------------------------------------------------"
-echo "Installing NIXL"
-echo "--------------------------------------------------------------------------"
-${UV} pip install --python ${PYTHON} ${NIXL_SOURCE_DIR}
-
-# --- Install vLLM in Editable Mode ---
-echo "--------------------------------------------------------------------------"
-echo "Installing vllm"
-echo "--------------------------------------------------------------------------"
-
-echo "Cloning vLLM repository from ${GIT_REPO_URL} into ${VLLM_SOURCE_DIR}..."
-git clone --branch pplx_intranode --single-branch "${GIT_REPO_URL}" "${VLLM_SOURCE_DIR}"
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to clone vLLM repository."
-    exit 1
-fi
-
-echo "Changing directory to ${VLLM_SOURCE_DIR} for vLLM installation..."
-cd "${VLLM_SOURCE_DIR}" || { echo "ERROR: Failed to change directory to ${VLLM_SOURCE_DIR}."; exit 1; }
-echo "Current directory: $(pwd)"
-
-echo "Installing vLLM in editable mode using ${UV}..."
-# Ensure VLLM_USE_PRECOMPILED is set
-echo "Setting VLLM_USE_PRECOMPILED=1"
-export VLLM_USE_PRECOMPILED=1
-"${UV}" pip install --python "${PYTHON}" -e .
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to install vLLM in editable mode."
-    exit 1
-fi
-echo "vLLM installed successfully in editable mode."
-
-echo "--------------------------------------------------------------------------"
-echo "Installing PPLX-kernels"
-echo "--------------------------------------------------------------------------"
+# Repositories
+VLLM_REPO_URL="${VLLM_REPO_URL:-https://github.com/vllm-project/vllm.git}"
+VLLM_BRANCH="${VLLM_BRANCH:-main}"
 PPLX_URL="https://github.com/ppl-ai/pplx-kernels"
-echo "Cloning pplx-kernels repository from ${PPLX_URL} into ${PPLX_SOURCE_DIR}..."
-git clone https://github.com/ppl-ai/pplx-kernels "${PPLX_SOURCE_DIR}"
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to clone pplx-kernels repository."
-    exit 1
-fi
-echo "Changing directory to ${PPLX_SOURCE_DIR} for PPLX installation..."
-cd ${PPLX_SOURCE_DIR} || { echo "ERROR: Failed to change directory to ${PPLX_SOURCE_DIR}."; exit 1; }
-echo "Current directory: $(pwd)"
-echo "Installing pplx-kernels in editable mode using ${UV}..."
-${UV} pip install --python ${PYTHON} cmake
-source ${VENV_PATH}/bin/activate
-TORCH_CUDA_ARCH_LIST=9.0a+PTX ${PYTHON} setup.py bdist_wheel
-${UV} pip install --python ${PYTHON} dist/*.whl
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to install pplx-kernels in editable mode."
-    exit 1
-fi
+DEEPEP_URL="https://github.com/deepseek-ai/DeepEP"
+NIXL_SOURCE_DIR="${NIXL_SOURCE_DIR:-/opt/nixl}"
 
-echo "--------------------------------------------------------------------------"
-echo "vLLM Initialization Script Completed Successfully!"
-echo "=========================================================================="
+# Build-time env
+export TORCH_CUDA_ARCH_LIST="9.0a+PTX"
+export VLLM_USE_PRECOMPILED=1
+
+#############################  sanity checks  ################################
+command -v git   >/dev/null || { echo "git not found";   exit 1; }
+command -v "${UV}" >/dev/null || { echo "uv not found at ${UV}"; exit 1; }
+
+banner "Environment summary"
+echo "Python version      : ${PYTHON_VERSION}"
+echo "Virtualenv path     : ${VENV_PATH}"
+echo "uv binary           : ${UV}"
+echo "vLLM repo / branch  : ${VLLM_REPO_URL}  (${VLLM_BRANCH})"
+echo "pplx-kernels repo   : ${PPLX_URL}"
+echo "DeepEP repo         : ${DEEPEP_URL}"
+echo "====================================================================="
+
+#############################  virtual-env  ##################################
+banner "Creating virtual-env"
+"${UV}" venv "${VENV_PATH}"
+PYTHON="${VENV_PATH}/bin/python"
+export PATH="${VENV_PATH}/bin:${PATH}"
+
+banner "Installing base Python deps"
+upip pandas datasets rust-just regex setuptools-scm cmake
+
+banner "Installing NIXL"
+upip "${NIXL_SOURCE_DIR}"
+
+# --------------------------------------------------------------------------
+# Ensure the venv has pip so 'python -m pip' works later (DeepEP build step)
+# --------------------------------------------------------------------------
+banner "Bootstrapping pip inside venv"
+"${PYTHON}" -m ensurepip --upgrade
+"${PYTHON}" -m pip install -U pip wheel setuptools
+
+################################  vLLM  ######################################
+clone_or_update "${VLLM_REPO_URL}" "${VLLM_SOURCE_DIR}" "${VLLM_BRANCH}"
+
+banner "Installing vLLM (editable)"
+pushd "${VLLM_SOURCE_DIR}" >/dev/null
+upip -e .
+popd >/dev/null
+
+############################  pplx-kernels  ##################################
+clone_or_update "${PPLX_URL}" "${PPLX_SOURCE_DIR}" "master"
+
+banner "Building and installing pplx-kernels wheel"
+pushd "${PPLX_SOURCE_DIR}" >/dev/null
+"${PYTHON}" setup.py bdist_wheel
+upip dist/*.whl
+popd >/dev/null
+
+################################ DeepEP ######################################
+clone_or_update "${DEEPEP_URL}" "${DEEPEP_SOURCE_DIR}"
+
+banner "Building and installing DeepEP"
+pushd "${DEEPEP_SOURCE_DIR}" >/dev/null
+# Build + install in one go (pip will make a wheel under the hood)
+NVSHMEM_DIR="${NVSHMEM_PREFIX:-/opt/nvshmem}" \
+"${PYTHON}" -m pip install --no-build-isolation --no-cache-dir .
+# Optional symlink for convenience
+BUILD_DIR="build/lib.linux-$(uname -m)-cpython-${PY_TAG}"
+SO_NAME="deep_ep_cpp.cpython-${PY_TAG}-$(uname -m)-linux-gnu.so"
+[[ -f "${BUILD_DIR}/${SO_NAME}" ]] && ln -sf "${BUILD_DIR}/${SO_NAME}" .
+popd >/dev/null
+
+##############################################################################
+banner "All components installed successfully – vLLM stack is ready!"
+##############################################################################
+

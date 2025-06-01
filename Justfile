@@ -13,7 +13,7 @@ logs POD:
 
 install:
   mkdir -p ./.tmp \
-  kubectl create namespace {{NAMESPACE}} \
+  && kubectl create namespace {{NAMESPACE}} \
   && kubectl create secret generic hf-secret --from-literal=HF_TOKEN={{HF_TOKEN}} -n {{NAMESPACE}} \
   && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}} \
   && {{KN}} create configmap vllm-init-scripts-config \
@@ -54,14 +54,14 @@ install-pd:
   && echo "Installation Complete."
 
 uninstall:
-  {{KN}} delete leaderworkerset.leaderworkerset.x-k8s.io/vllm ; \
-  {{KN}} delete service vllm-leader ; \
-  {{KN}} delete pod --all \
+  {{KN}} delete leaderworkerset.leaderworkerset.x-k8s.io/vllm --ignore-not-found \
+  && {{KN}} delete service vllm-leader --ignore-not-found \
+  && {{KN}} delete pod --all \
     --grace-period=0 \
-    --force ; \
-  {{KN}} delete configmap vllm-init-scripts-config ; \
-  {{KN}} delete --now deployment toy-llm-proxy ; \
-  kubectl delete namespace {{NAMESPACE}} ; \
+    --force \
+  && {{KN}} delete configmap vllm-init-scripts-config --ignore-not-found \
+  && {{KN}} delete --now deployment toy-llm-proxy --ignore-not-found \
+  && kubectl delete namespace {{NAMESPACE}} --ignore-not-found \
   echo "Uninstall Complete."
 
 reinstall:
@@ -69,8 +69,6 @@ reinstall:
 
 reinstall-pd:
   just uninstall; just install-pd
-
-tmp:
 
 # TODO: It would be nicer to copy during install-pd if possible
 exec-bench:
