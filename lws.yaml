@@ -22,49 +22,27 @@ spec:
                             values:
                               - H200
 
-              initContainers:
-              - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.14" # Your base image
-                imagePullPolicy: Always
-                command: ["/init-scripts/init-vllm.sh"]
-                env:
-                  - name: VLLM_REPO_URL
-                    value: "https://github.com/neuralmagic/vllm.git"
-                  - name: VLLM_BRANCH
-                    value: "varun/deepep"
-                  - name: GH_TOKEN_FROM_SECRET
-                    valueFrom:
-                      secretKeyRef:
-                        name: gh-token-secret
-                        key: GH_TOKEN
-                        optional: true
-                volumeMounts:
-                  - name: code-storage
-                    mountPath: /app/code
-                  - name: init-scripts-volume # Mounts the directory containing input scripts
-                    mountPath: /init-scripts
-                resources:
-                  requests:
-                    cpu: "4"
-                    memory: "16Gi"
-                  limits:
-                    cpu: "4"
-                    memory: "16Gi"
-
               containers:
               - name: vllm-leader
-                image: "quay.io/tms/vllm-dev-base:0.0.14" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.15"
                 imagePullPolicy: Always
-                workingDir: /app/code
+                workingDir: /app
                 stdin: true
                 tty: true
                 command: ["/bin/sh","-c"]
                 args:
                   - |
+                    #################
+                    # Install vLLM
+                    #################
+                    /init-scripts/init-vllm.sh
+                    #################
+                    # RUN vLLM
+                    #################
                     DP_SIZE=2
                     TP_SIZE=1
                     DP_SIZE_LOCAL=1
-                    exec /app/code/venv/bin/vllm serve \
+                    exec /app/venv/bin/vllm serve \
                       deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct \
                       --port 8080 \
                       --disable-log-requests \
@@ -79,6 +57,10 @@ spec:
                       --data-parallel-rpc-port 5555 \
                       --trust-remote-code
                 env:
+                  - name: VLLM_REPO_URL
+                    value: "https://github.com/neuralmagic/vllm.git"
+                  - name: VLLM_BRANCH
+                    value: "varun/deepep"
                   - name: VLLM_ALL2ALL_BACKEND
 #                    value: "naive"
 #                    value: "pplx"
@@ -153,13 +135,11 @@ spec:
                   initialDelaySeconds: 30
                   periodSeconds: 30
                 volumeMounts:
-                  - name: code-storage
-                    mountPath: /app/code
                   - mountPath: /dev/shm
                     name: dshm
+                  - name: init-scripts-volume
+                    mountPath: /init-scripts
               volumes:
-                - name: code-storage
-                  emptyDir: {}
                 # Volume for the init script from ConfigMap
                 - name: init-scripts-volume
                   configMap:
@@ -184,50 +164,28 @@ spec:
                             values:
                               - H200
 
-              initContainers:
-              - name: vllm-source-installer
-                image: "quay.io/tms/vllm-dev-base:0.0.14" # Your base image
-                imagePullPolicy: Always
-                command: ["/init-scripts/init-vllm.sh"]
-                env:
-                  - name: VLLM_REPO_URL
-                    value: "https://github.com/neuralmagic/vllm.git"
-                  - name: VLLM_BRANCH
-                    value: "varun/deepep"
-                  - name: GH_TOKEN_FROM_SECRET
-                    valueFrom:
-                      secretKeyRef:
-                        name: gh-token-secret
-                        key: GH_TOKEN
-                        optional: true
-                volumeMounts:
-                  - name: code-storage
-                    mountPath: /app/code
-                  - name: init-scripts-volume # Mounts the directory containing input scripts
-                    mountPath: /init-scripts
-                resources:
-                  requests:
-                    cpu: "4"
-                    memory: "16Gi"
-                  limits:
-                    cpu: "4"
-                    memory: "16Gi"
-
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-base:0.0.14" # Use the same base image
+                image: "quay.io/tms/vllm-dev-base:0.0.15"
                 imagePullPolicy: Always
-                workingDir: /app/code
+                workingDir: /app
                 stdin: true
                 tty: true
                 command: ["/bin/sh","-c"]
                 args:
                   - |
+                    #################
+                    # Install vLLM
+                    #################
+                    /init-scripts/init-vllm.sh
+                    #################
+                    # RUN vLLM
+                    #################
                     DP_SIZE=2
                     TP_SIZE=1
                     DP_SIZE_LOCAL=1
                     START_RANK=$(( LWS_WORKER_INDEX * DP_SIZE_LOCAL ))
-                    exec /app/code/venv/bin/vllm serve \
+                    exec /app/venv/bin/vllm serve \
                       deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct \
                       --port 8080 \
                       --disable-log-requests \
@@ -244,6 +202,10 @@ spec:
                       --data-parallel-start-rank $START_RANK \
                       --trust-remote-code
                 env:
+                  - name: VLLM_REPO_URL
+                    value: "https://github.com/neuralmagic/vllm.git"
+                  - name: VLLM_BRANCH
+                    value: "varun/deepep"
                   - name: VLLM_ALL2ALL_BACKEND
 #                    value: "naive"
 #                    value: "pplx"
@@ -311,14 +273,11 @@ spec:
                     nvidia.com/gpu: "1"
                     rdma/ib: 1
                 volumeMounts:
-                  - name: code-storage
-                    mountPath: /app/code
                   - mountPath: /dev/shm
                     name: dshm
+                  - name: init-scripts-volume
+                    mountPath: /init-scripts
               volumes:
-                # Shared volume for vLLM source code, cloned by init container into /app/vllm
-                - name: code-storage # This emptyDir will be mounted at /app/vllm
-                  emptyDir: {}
                 # Volume for the init script from ConfigMap
                 - name: init-scripts-volume
                   configMap:

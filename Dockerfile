@@ -176,14 +176,15 @@ ENV PKG_CONFIG_PATH=${NVSHMEM_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}
 RUN curl -LsSf https://astral.sh/uv/install.sh \
         | env UV_INSTALL_DIR="/usr/local/bin/" sh
 
-# Install my dotfiles
-WORKDIR ${HOME}
-RUN echo "Cloning and installing dotfiles"
-RUN git clone https://github.com/tlrmchlsmth/dotfiles.git
-RUN cd dotfiles && bash install.sh
-
 # For neovim.appimage
 RUN echo "export APPIMAGE_EXTRACT_AND_RUN=1" >> $HOME/.zshrc
 
-WORKDIR /app/vllm
+# Install dependencies - NIXL (python), PPLX-A2A, DeepEP
+COPY install-deps.sh /tmp/
+RUN chmod +x /tmp/install-deps.sh \
+    && /tmp/install-deps.sh \
+    && rm /tmp/install-deps.sh
+
+
+WORKDIR /app/
 ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]
