@@ -111,6 +111,12 @@ spec:
                         name: gh-token-secret
                         key: GH_TOKEN
                         optional: true
+                  - name: VLLM_NIXL_SIDE_CHANNEL_PORT
+                    value: "6555"
+                  - name: VLLM_NIXL_SIDE_CHANNEL_HOST
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: status.podIP
 
                 securityContext:
                   capabilities:
@@ -256,6 +262,12 @@ spec:
                         name: gh-token-secret
                         key: GH_TOKEN
                         optional: true
+                  - name: VLLM_NIXL_SIDE_CHANNEL_PORT
+                    value: "6555"
+                  - name: VLLM_NIXL_SIDE_CHANNEL_HOST
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: status.podIP
 
                 securityContext:
                   capabilities:
