@@ -39,28 +39,28 @@ spec:
                     #################
                     # RUN vLLM
                     #################
-                    DP_SIZE=2
-                    TP_SIZE=1
-                    DP_SIZE_LOCAL=1
+                    DP_SIZE=4
+                    TP_SIZE=2
+                    DP_SIZE_LOCAL=2
                     exec /app/venv/bin/vllm serve \
-                      deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct \
+                      __MODEL__ \
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
-                      --kv-transfer-config \
-                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
                       --enable-expert-parallel \
                       --tensor-parallel-size $TP_SIZE \
                       --data-parallel-size $DP_SIZE \
                       --data-parallel-size-local $DP_SIZE_LOCAL \
                       --data-parallel-address $(LWS_LEADER_ADDRESS) \
                       --data-parallel-rpc-port 5555 \
-                      --trust-remote-code
+                      --trust-remote-code \
+                      --kv-transfer-config \
+                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
                 env:
-#                  - name: VLLM_REPO_URL
-#                    value: "https://github.com/neuralmagic/vllm.git"
+                  - name: VLLM_REPO_URL
+                    value: "https://github.com/robertgshaw2-redhat/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "pplx_intranode"
+                    value: "fix-dp-nixl-xchange"
                   - name: VLLM_ALL2ALL_BACKEND
 #                    value: "naive"
                     value: "pplx"
@@ -123,15 +123,15 @@ spec:
                     add: [ "IPC_LOCK" ]
                 resources:
                   limits:
-                    nvidia.com/gpu: "1"
+                    nvidia.com/gpu: "2"
                     memory: 64Gi
-                    ephemeral-storage: 128Gi
+                    ephemeral-storage: 256Gi
                     rdma/ib: 1
                   requests:
                     cpu: 8
                     memory: 64Gi
-                    ephemeral-storage: 128Gi
-                    nvidia.com/gpu: "1"
+                    ephemeral-storage: 256Gi
+                    nvidia.com/gpu: "2"
                     rdma/ib: 1
                 ports:
                   - containerPort: 8080
@@ -187,17 +187,15 @@ spec:
                     #################
                     # RUN vLLM
                     #################
-                    DP_SIZE=2
-                    TP_SIZE=1
-                    DP_SIZE_LOCAL=1
+                    DP_SIZE=4
+                    TP_SIZE=2
+                    DP_SIZE_LOCAL=2
                     START_RANK=$(( LWS_WORKER_INDEX * DP_SIZE_LOCAL ))
                     exec /app/venv/bin/vllm serve \
-                      deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct \
+                      __MODEL__ \
                       --port 8080 \
                       --disable-log-requests \
                       --enforce-eager \
-                      --kv-transfer-config \
-                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
                       --enable-expert-parallel \
                       --tensor-parallel-size $TP_SIZE \
                       --data-parallel-size $DP_SIZE \
@@ -207,11 +205,13 @@ spec:
                       --headless \
                       --data-parallel-start-rank $START_RANK \
                       --trust-remote-code
+                      --kv-transfer-config \
+                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
                 env:
-#                  - name: VLLM_REPO_URL
-#                    value: "https://github.com/neuralmagic/vllm.git"
+                  - name: VLLM_REPO_URL
+                    value: "https://github.com/robertgshaw2-redhat/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "pplx_intranode"
+                    value: "fix-dp-nixl-xchange"
                   - name: VLLM_ALL2ALL_BACKEND
 #                    value: "naive"
                     value: "pplx"
@@ -274,15 +274,15 @@ spec:
                     add: [ "IPC_LOCK" ]
                 resources:
                   limits:
-                    nvidia.com/gpu: "1"
+                    nvidia.com/gpu: "2"
                     memory: 64Gi
-                    ephemeral-storage: 128Gi
+                    ephemeral-storage: 256Gi
                     rdma/ib: 1
                   requests:
                     cpu: 8
                     memory: 64Gi
-                    ephemeral-storage: 128Gi
-                    nvidia.com/gpu: "1"
+                    ephemeral-storage: 256Gi
+                    nvidia.com/gpu: "2"
                     rdma/ib: 1
                 volumeMounts:
                   - mountPath: /dev/shm

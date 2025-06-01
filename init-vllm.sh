@@ -12,7 +12,7 @@ trap 'echo "ERROR: Script failed on line $LINENO"; exit 1' ERR
 banner() { printf '\n========== %s ==========\n' "$*"; }
 
 # Re-usable “uv pip install” wrapper (adds --no-cache-dir by default)
-upip() { "${UV}" pip install --python "${PYTHON}" --no-progress --no-cache-dir "$@"; }
+upip() { "${UV}" pip install --python "${PYTHON}" --no-progress --no-color --no-cache-dir "$@"; }
 
 # Clone the repo if missing, otherwise fast-forward to the requested branch
 clone_or_update() {
@@ -82,12 +82,8 @@ clone_or_update "${DOTFILES_REPO_URL}" "${HOME}/dotfiles"
 pushd "${HOME}/dotfiles" >/dev/null
 
 # Run dotfiles installer 
-# Handle optional GH_TOKEN_FROM_SECRET
-if [[ -n "${GH_TOKEN_FROM_SECRET:-}" ]]; then
-    bash ./install.sh -g "$GH_TOKEN_FROM_SECRET"
-else
-    bash ./install.sh
-fi
+# Don't log in with GH_TOKEN_FROM_SECRET, because it takes too long.
+bash ./install.sh
 
 popd >/dev/null
 

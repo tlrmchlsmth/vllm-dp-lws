@@ -4,7 +4,8 @@ set dotenv-required
 NAMESPACE := "$NAMESPACE"
 HF_TOKEN := "$HF_TOKEN"
 GH_TOKEN := "$GH_TOKEN"
-MODEL := "$MODEL"
+
+MODEL := "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
 
 KN := "kubectl -n $NAMESPACE"
 
@@ -20,11 +21,12 @@ install:
     --from-file=init-vllm.sh \
     --dry-run=client -o yaml > .tmp/init-scripts-cm.yaml.tmp \
   && {{KN}} apply -f .tmp/init-scripts-cm.yaml.tmp \
-  && sed -e 's/__SERVICE_NAME__/vllm-leader/g' \
-         -e 's/__LWS_NAME__/vllm/g' lws.yaml \
+  && sed -e 's#__SERVICE_NAME__#vllm-leader#g' \
+         -e 's#__LWS_NAME__#vllm#g' \
+         -e 's#__MODEL__#{{MODEL}}#g' lws.yaml \
       > .tmp/lws.yaml.tmp \
   && echo "MODEL := \"{{MODEL}}\"" > .tmp/Justfile.remote.tmp \
-  && sed -e 's/__BASE_URL__/\"http:\/\/vllm-leader:8080\"/g' Justfile.remote >> .tmp/Justfile.remote.tmp \
+  && sed -e 's#__BASE_URL__#\"http://vllm-leader:8080\"#g' Justfile.remote >> .tmp/Justfile.remote.tmp \
   && {{KN}} apply -f .tmp/lws.yaml.tmp \
   && {{KN}} apply -f benchmark-interactive-pod.yaml \
   && echo "Installation Complete."
@@ -38,14 +40,16 @@ install-pd:
     --from-file=init-vllm.sh \
     --dry-run=client -o yaml > .tmp/init-scripts-cm.yaml.tmp \
   && {{KN}} apply -f .tmp/init-scripts-cm.yaml.tmp \
-  && sed -e 's/__SERVICE_NAME__/vllm-prefill-leader/g' \
-         -e 's/__LWS_NAME__/vllm-prefill/g' lws.yaml \
+  && sed -e 's#__SERVICE_NAME__#vllm-prefill-leader#g' \
+         -e 's#__LWS_NAME__#vllm-prefill#g' \
+         -e 's#__MODEL__#{{MODEL}}#g' lws.yaml \
       > .tmp/lws.prefill.yaml.tmp \
-  && sed -e 's/__SERVICE_NAME__/vllm-decode-leader/g' \
-         -e 's/__LWS_NAME__/vllm-decode/g' lws.yaml \
+  && sed -e 's#__SERVICE_NAME__#vllm-decode-leader#g' \
+         -e 's#__LWS_NAME__#vllm-decode#g' \
+         -e 's#__MODEL__#"{{MODEL}}"#g' lws.yaml \
       > .tmp/lws.decode.yaml.tmp \
   && echo "MODEL := \"{{MODEL}}\"" > .tmp/Justfile.remote.tmp \
-  && sed -e 's/__BASE_URL__/\"http:\/\/toy-proxy-service:8080\"/g' Justfile.remote >> .tmp/Justfile.remote.tmp \
+  && sed -e 's#__BASE_URL__#\"http://toy-proxy-service:8080\"#g' Justfile.remote >> .tmp/Justfile.remote.tmp \
   && {{KN}} apply -f .tmp/lws.prefill.yaml.tmp \
   && {{KN}} apply -f .tmp/lws.decode.yaml.tmp \
   && {{KN}} apply -f benchmark-interactive-pod.yaml \
