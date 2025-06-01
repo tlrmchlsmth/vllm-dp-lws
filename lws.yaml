@@ -57,15 +57,15 @@ spec:
                       --data-parallel-rpc-port 5555 \
                       --trust-remote-code
                 env:
-                  - name: VLLM_REPO_URL
-                    value: "https://github.com/neuralmagic/vllm.git"
+#                  - name: VLLM_REPO_URL
+#                    value: "https://github.com/neuralmagic/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "varun/deepep"
+                    value: "pplx_intranode"
                   - name: VLLM_ALL2ALL_BACKEND
 #                    value: "naive"
-#                    value: "pplx"
+                    value: "pplx"
 #                    value: "deepep_high_throughput"
-                    value: "deepep_low_latency"
+#                    value: "deepep_low_latency"
 #
                     # Needed for GDRCOPY to be used.
                     # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
@@ -202,15 +202,15 @@ spec:
                       --data-parallel-start-rank $START_RANK \
                       --trust-remote-code
                 env:
-                  - name: VLLM_REPO_URL
-                    value: "https://github.com/neuralmagic/vllm.git"
+#                  - name: VLLM_REPO_URL
+#                    value: "https://github.com/neuralmagic/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "varun/deepep"
+                    value: "pplx_intranode"
                   - name: VLLM_ALL2ALL_BACKEND
 #                    value: "naive"
-#                    value: "pplx"
+                    value: "pplx"
 #                    value: "deepep_high_throughput"
-                    value: "deepep_low_latency"
+#                    value: "deepep_low_latency"
 #
                     # Needed for GDRCOPY to be used.
                     # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
