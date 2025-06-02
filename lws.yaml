@@ -7,156 +7,6 @@ spec:
     leaderWorkerTemplate:
         size: 2
         restartPolicy: RecreateGroupOnPodRestart
-        leaderTemplate:
-            metadata:
-                labels:
-                    role: leader
-            spec:
-              affinity:
-                nodeAffinity:
-                  requiredDuringSchedulingIgnoredDuringExecution:
-                    nodeSelectorTerms:
-                      - matchExpressions:
-                          - key: gpu.nvidia.com/model
-                            operator: In
-                            values:
-                              - H200
-
-              containers:
-              - name: vllm-leader
-                image: "quay.io/tms/vllm-dev-base:0.0.15"
-                imagePullPolicy: Always
-                workingDir: /app
-                stdin: true
-                tty: true
-                command: ["/bin/sh","-c"]
-                args:
-                  - |
-                    #################
-                    # Install vLLM
-                    #################
-                    /init-scripts/init-vllm.sh
-                    #################
-                    # RUN vLLM
-                    #################
-                    DP_SIZE=4
-                    TP_SIZE=2
-                    DP_SIZE_LOCAL=2
-                    exec /app/venv/bin/vllm serve \
-                      __MODEL__ \
-                      --port 8080 \
-                      --disable-log-requests \
-                      --enforce-eager \
-                      --enable-expert-parallel \
-                      --tensor-parallel-size $TP_SIZE \
-                      --data-parallel-size $DP_SIZE \
-                      --data-parallel-size-local $DP_SIZE_LOCAL \
-                      --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                      --data-parallel-rpc-port 5555 \
-                      --trust-remote-code \
-                      --kv-transfer-config \
-                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
-                env:
-                  - name: VLLM_REPO_URL
-                    value: "https://github.com/robertgshaw2-redhat/vllm.git"
-                  - name: VLLM_BRANCH
-                    value: "fix-dp-nixl-xchange"
-                  - name: VLLM_ALL2ALL_BACKEND
-                    value: "naive"
-#                    value: "pplx"
-#                    value: "deepep_high_throughput"
-#                    value: "deepep_low_latency"
-#
-                    # Needed for GDRCOPY to be used.
-                    # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
-                  - name: NVIDIA_GDRCOPY
-                    value: "enabled"
-#                  - name: NVIDIA_NVSWITCH
-#                    value: "enabled"
-#                  - name: NVIDIA_GDS # for GPU direct storage.
-#                    value: "enabled"
-#                  - name: NVIDIA_MOFED # Crashes with this.
-#                    value: "enabled"
-                  - name: NCCL_DEBUG
-                    value: "INFO"
-                  - name: NVSHMEM_DEBUG
-                    value: "INFO"
-                  - name: NVSHMEM_REMOTE_TRANSPORT
-                    value: "ibrc"
-#                  - name: NVSHMEM_IB_ENABLE_IBGDA
-#                    value: "true"
-#                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
-#                    value: "true"
-#                  - name: NVSHMEM_HCA_LIST
-#                    value: "ibp0:1,ibp1:1,ibp2:1,ibp3:1,ibp4:1,ibp5:1,ibp6:1,ibp7:1"
-                  - name: GLOO_SOCKET_IFNAME
-                    value: "eth0"
-                  - name: NCCL_SOCKET_IFNAME
-                    value: "eth0"
-                  - name: NCCL_IB_HCA
-                    value: "ibp"
-                  - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
-                    value: "eth0"
-                  - name: VLLM_LOGGING_LEVEL
-                    value: "DEBUG"
-                  - name: HF_TOKEN
-                    valueFrom:
-                      secretKeyRef:
-                        name: hf-secret
-                        key: HF_TOKEN
-                        optional: true
-                  - name: GH_TOKEN_FROM_SECRET
-                    valueFrom:
-                      secretKeyRef:
-                        name: gh-token-secret
-                        key: GH_TOKEN
-                        optional: true
-                  - name: VLLM_NIXL_SIDE_CHANNEL_PORT
-                    value: "6555"
-                  - name: VLLM_NIXL_SIDE_CHANNEL_HOST
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: status.podIP
-
-                securityContext:
-                  capabilities:
-                    add: [ "IPC_LOCK" ]
-                resources:
-                  limits:
-                    nvidia.com/gpu: "4"
-                    memory: 64Gi
-                    ephemeral-storage: 256Gi
-                    rdma/ib: 1
-                  requests:
-                    cpu: 8
-                    memory: 64Gi
-                    ephemeral-storage: 256Gi
-                    nvidia.com/gpu: "4"
-                    rdma/ib: 1
-                ports:
-                  - containerPort: 8080
-                readinessProbe:
-                  tcpSocket:
-                    port: 8080
-                  initialDelaySeconds: 30
-                  periodSeconds: 30
-                volumeMounts:
-                  - mountPath: /dev/shm
-                    name: dshm
-                  - name: init-scripts-volume
-                    mountPath: /init-scripts
-              volumes:
-                # Volume for the init script from ConfigMap
-                - name: init-scripts-volume
-                  configMap:
-                    name: vllm-init-scripts-config
-                    defaultMode: 0755 # Set execute permissions for the script
-                # Needed for NCCL to function
-                - name: dshm
-                  emptyDir:
-                    medium: Memory
-                    sizeLimit: 1Gi
-
 
         workerTemplate:
             spec:
@@ -187,31 +37,58 @@ spec:
                     #################
                     # RUN vLLM
                     #################
-                    DP_SIZE=4
-                    TP_SIZE=2
-                    DP_SIZE_LOCAL=2
-                    START_RANK=$(( LWS_WORKER_INDEX * DP_SIZE_LOCAL ))
-                    exec /app/venv/bin/vllm serve \
-                      __MODEL__ \
-                      --port 8080 \
-                      --disable-log-requests \
-                      --enforce-eager \
-                      --enable-expert-parallel \
-                      --tensor-parallel-size $TP_SIZE \
-                      --data-parallel-size $DP_SIZE \
-                      --data-parallel-size-local $DP_SIZE_LOCAL \
-                      --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                      --data-parallel-rpc-port 5555 \
-                      --headless \
-                      --data-parallel-start-rank $START_RANK \
-                      --trust-remote-code
-                      --kv-transfer-config \
-                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
+                    START_RANK=$(( ${LWS_WORKER_INDEX:-0} * DP_SIZE_LOCAL ))
+                    if [ "${LWS_WORKER_INDEX:-0}" -eq 0 ]; then
+                      #################
+                      # Leader-only launch
+                      #################
+                      exec /app/venv/bin/vllm serve \
+                        __MODEL__ \
+                        --port 8080 \
+                        --disable-log-requests \
+                        --enable-expert-parallel \
+                        --tensor-parallel-size $TP_SIZE \
+                        --data-parallel-size $DP_SIZE \
+                        --data-parallel-size-local $DP_SIZE_LOCAL \
+                        --data-parallel-address $(LWS_LEADER_ADDRESS) \
+                        --data-parallel-rpc-port 5555 \
+                        --data-parallel-start-rank $START_RANK \
+                        --trust-remote-code \
+                        --kv-transfer-config \
+                          '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
+                        --enforce-eager
+                    else
+                      #################
+                      # Worker-only launch
+                      #################
+                      exec /app/venv/bin/vllm serve \
+                        __MODEL__ \
+                        --port 8080 \
+                        --disable-log-requests \
+                        --enable-expert-parallel \
+                        --tensor-parallel-size $TP_SIZE \
+                        --data-parallel-size $DP_SIZE \
+                        --data-parallel-size-local $DP_SIZE_LOCAL \
+                        --data-parallel-address $(LWS_LEADER_ADDRESS) \
+                        --data-parallel-rpc-port 5555 \
+                        --data-parallel-start-rank $START_RANK \
+                        --trust-remote-code \
+                        --kv-transfer-config \
+                          '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
+                        --enforce-eager \
+                        --headless
+                    fi
                 env:
+                  - name: DP_SIZE
+                    value: "4"
+                  - name: TP_SIZE
+                    value: "2"
+                  - name: DP_SIZE_LOCAL
+                    value: "2"
                   - name: VLLM_REPO_URL
-                    value: "https://github.com/robertgshaw2-redhat/vllm.git"
+                    value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "fix-dp-nixl-xchange"
+                    value: "pplx_intranode"
                   - name: VLLM_ALL2ALL_BACKEND
                     value: "naive"
 #                    value: "pplx"
@@ -314,5 +191,5 @@ spec:
           targetPort: 8080
     selector:
         leaderworkerset.sigs.k8s.io/name: __LWS_NAME__
-        role: leader
+        leaderworkerset.sigs.k8s.io/worker-index: "0"
     type: ClusterIP
