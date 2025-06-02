@@ -30,6 +30,8 @@ spec:
                 command: ["/bin/sh","-c"]
                 args:
                   - |
+                    # Squash a warning.
+                    rm /etc/libibverbs.d/vmw_pvrdma.driver
                     #################
                     # Install vLLM
                     #################
@@ -90,8 +92,8 @@ spec:
                   - name: VLLM_BRANCH
                     value: "pplx_intranode"
                   - name: VLLM_ALL2ALL_BACKEND
-                    value: "naive"
-#                    value: "pplx"
+#                    value: "naive"
+                    value: "pplx"
 #                    value: "deepep_high_throughput"
 #                    value: "deepep_low_latency"
 #
@@ -103,28 +105,33 @@ spec:
 #                    value: "enabled"
 #                  - name: NVIDIA_GDS
 #                    value: "enabled"
+
+                   # NVIDIA_MOFED is likely needed for using IBGDA but causes crashes
 #                  - name: NVIDIA_MOFED
 #                    value: "enabled"
+#
                   - name: NCCL_DEBUG
                     value: "INFO"
                   - name: NVSHMEM_DEBUG
-                    value: "INFO"
+                    value: "TRACE"
+                  - name: NVSHMEM_DEBUG_SUBSYS
+                    value: "TRANSPORT,INIT,MEM,COLL,BOOTSTRAP"
                   - name: NVSHMEM_REMOTE_TRANSPORT
                     value: "ibrc"
-#                  - name: NVSHMEM_IB_ENABLE_IBGDA
-#                    value: "true"
-#                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
-#                    value: "true"
-#                  - name: NVSHMEM_HCA_LIST
-#                    value: "ibp0:1,ibp1:1,ibp2:1,ibp3:1,ibp4:1,ibp5:1,ibp6:1,ibp7:1"
+                  - name: NVSHMEM_IB_ENABLE_IBGDA
+                    value: "true"
+                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
+                    value: "true"
+                  - name: NVSHMEM_HCA_LIST
+                    value: "ibp0:1,ibp1:1,ibp2:1,ibp3:1,ibp4:1,ibp5:1,ibp6:1,ibp7:1"
+                  - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
+                    value: "eth0"
                   - name: GLOO_SOCKET_IFNAME
                     value: "eth0"
                   - name: NCCL_SOCKET_IFNAME
                     value: "eth0"
                   - name: NCCL_IB_HCA
                     value: "ibp"
-                  - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
-                    value: "eth0"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
                   - name: HF_TOKEN
