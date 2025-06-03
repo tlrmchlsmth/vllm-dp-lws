@@ -1,6 +1,6 @@
 # Dockerfile for vLLM development
 # Use a CUDA base image.
-FROM docker.io/nvidia/cuda:12.8.1-devel-ubuntu22.04
+FROM docker.io/nvidia/cuda:12.8.1-devel-ubuntu22.04 as base
 
 WORKDIR /app
 
@@ -140,7 +140,12 @@ ENV LD_LIBRARY_PATH=${NIXL_PREFIX}/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
 ENV NIXL_PLUGIN_DIR=${NIXL_PREFIX}/lib/x86_64-linux-gnu/plugins
 
 # --- Build and Install NVSHMEM from Source ---
-RUN cd /tmp \
+
+ENV MPI_HOME=/usr/lib/x86_64-linux-gnu/openmpi
+ENV CPATH=${MPI_HOME}/include:${CPATH}
+
+RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx && \
+    cd /tmp \
     && wget https://developer.nvidia.com/downloads/assets/secure/nvshmem/nvshmem_src_${NVSHMEM_VERSION}.txz \
     && tar -xf nvshmem_src_${NVSHMEM_VERSION}.txz \
     && cd nvshmem_src \
@@ -150,17 +155,17 @@ RUN cd /tmp \
       -G Ninja \
       -DNVSHMEM_PREFIX=${NVSHMEM_PREFIX} \
       -DCMAKE_CUDA_ARCHITECTURES="80;89;90a;100a" \
-      -DNVSHMEM_MPI_SUPPORT=1            \
-      -DNVSHMEM_PMIX_SUPPORT=1           \
+      -DNVSHMEM_PMIX_SUPPORT=0           \
       -DNVSHMEM_LIBFABRIC_SUPPORT=1      \
       -DNVSHMEM_IBRC_SUPPORT=1           \
       -DNVSHMEM_IBGDA_SUPPORT=1          \
       -DNVSHMEM_IBDEVX_SUPPORT=1         \
       -DNVSHMEM_USE_GDRCOPY=1            \
       -DNVSHMEM_BUILD_TESTS=1            \
-      -DNVSHMEM_BUILD_EXAMPLES=1         \
+      -DNVSHMEM_BUILD_EXAMPLES=0         \
       -DLIBFABRIC_HOME=/usr              \
       -DGDRCOPY_HOME=${GDRCOPY_HOME}     \
+      -DNVSHMEM_MPI_SUPPORT=1            \
       .. \
     && ninja -j${MAX_JOBS} \
     && ninja -j${MAX_JOBS} install \
@@ -179,12 +184,27 @@ RUN curl -LsSf https://astral.sh/uv/install.sh \
 # For neovim.appimage
 RUN echo "export APPIMAGE_EXTRACT_AND_RUN=1" >> $HOME/.zshrc
 
+# Squash a warning
+RUN rm /etc/libibverbs.d/vmw_pvrdma.driver
+
 # Install dependencies - NIXL (python), PPLX-A2A, DeepEP
 COPY install-deps.sh /tmp/
 RUN chmod +x /tmp/install-deps.sh \
     && /tmp/install-deps.sh \
     && rm /tmp/install-deps.sh
 
+ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]
 
-WORKDIR /app/
+#==============================================================================
+
+FROM base AS varun-deepep
+
+# Install dependencies - NIXL (python), PPLX-A2A, DeepEP
+COPY init-vllm.sh /tmp/
+RUN chmod +x /tmp/init-vllm.sh \
+    && VLLM_REPO_URL="https://github.com/neuralmagic/vllm.git" \
+       VLLM_BRANCH="varun/deepep" \
+       /tmp/init-vllm.sh \
+       rm /tmp/init-vllm.sh
+
 ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]

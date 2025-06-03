@@ -22,7 +22,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-base:0.0.15"
+                image: "quay.io/tms/vllm-dev-base:0.0.17"
                 imagePullPolicy: Always
                 workingDir: /app
                 stdin: true
@@ -30,12 +30,11 @@ spec:
                 command: ["/bin/sh","-c"]
                 args:
                   - |
-                    # Squash a warning.
-                    rm /etc/libibverbs.d/vmw_pvrdma.driver
+                    sleep infinity
                     #################
                     # Install vLLM
                     #################
-                    /init-scripts/init-vllm.sh
+                    VLLM_USE_PRECOMPILED=1 /init-scripts/init-vllm.sh
                     #################
                     # RUN vLLM
                     #################

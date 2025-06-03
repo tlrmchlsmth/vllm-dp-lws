@@ -46,7 +46,6 @@ DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/tlrmchlsmth/dotfiles.
 
 # Build-time env
 export TORCH_CUDA_ARCH_LIST="9.0a+PTX"
-export VLLM_USE_PRECOMPILED=1
 
 #############################  sanity checks  ################################
 command -v git   >/dev/null || { echo "git not found";   exit 1; }
