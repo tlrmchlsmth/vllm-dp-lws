@@ -18,7 +18,7 @@ install:
   && kubectl create secret generic hf-secret --from-literal=HF_TOKEN={{HF_TOKEN}} -n {{NAMESPACE}} \
   && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}} \
   && {{KN}} create configmap vllm-init-scripts-config \
-    --from-file=init-vllm.sh \
+    --from-file=install-scripts/vllm.sh \
     --dry-run=client -o yaml > .tmp/init-scripts-cm.yaml.tmp \
   && {{KN}} apply -f .tmp/init-scripts-cm.yaml.tmp \
   && sed -e 's#__SERVICE_NAME__#vllm-leader#g' \
@@ -37,7 +37,7 @@ install-pd:
   && kubectl create secret generic hf-secret --from-literal=HF_TOKEN={{HF_TOKEN}} -n {{NAMESPACE}} \
   && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}} \
   && {{KN}} create configmap vllm-init-scripts-config \
-    --from-file=init-vllm.sh \
+    --from-file=install-scripts/vllm.sh \
     --dry-run=client -o yaml > .tmp/init-scripts-cm.yaml.tmp \
   && {{KN}} apply -f .tmp/init-scripts-cm.yaml.tmp \
   && sed -e 's#__SERVICE_NAME__#vllm-prefill-leader#g' \

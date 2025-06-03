@@ -1,6 +1,6 @@
 # Dockerfile for vLLM development
 # Use a CUDA base image.
-FROM docker.io/nvidia/cuda:12.8.1-devel-ubuntu22.04 as base
+FROM docker.io/nvidia/cuda:12.8.1-devel-ubuntu22.04 AS base
 
 WORKDIR /app
 
@@ -139,13 +139,32 @@ RUN cd /tmp \
 ENV LD_LIBRARY_PATH=${NIXL_PREFIX}/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
 ENV NIXL_PLUGIN_DIR=${NIXL_PREFIX}/lib/x86_64-linux-gnu/plugins
 
+# Install UV
+RUN curl -LsSf https://astral.sh/uv/install.sh \
+        | env UV_INSTALL_DIR="/usr/local/bin/" sh
+
+# Squash a warning
+RUN rm /etc/libibverbs.d/vmw_pvrdma.driver
+
+# Install dependencies & NIXL (python)
+ENV COMMON_DIR=/tmp/
+COPY install-scripts/common.sh /tmp/
+COPY install-scripts/base-deps.sh /tmp/
+RUN chmod +x /tmp/base-deps.sh \
+    && /tmp/base-deps.sh \
+    && rm /tmp/base-deps.sh
+
+# For neovim.appimage
+ENV APPIMAGE_EXTRACT_AND_RUN=1
+
+ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]
+#==============================================================================
+
+FROM base AS pplx 
+# Here we install NVSHMEM for pplx-kernel support (without deepep modifications).
+
 # --- Build and Install NVSHMEM from Source ---
-
-ENV MPI_HOME=/usr/lib/x86_64-linux-gnu/openmpi
-ENV CPATH=${MPI_HOME}/include:${CPATH}
-
-RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx && \
-    cd /tmp \
+RUN cd /tmp \
     && wget https://developer.nvidia.com/downloads/assets/secure/nvshmem/nvshmem_src_${NVSHMEM_VERSION}.txz \
     && tar -xf nvshmem_src_${NVSHMEM_VERSION}.txz \
     && cd nvshmem_src \
@@ -154,15 +173,72 @@ RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx && \
     && cmake \
       -G Ninja \
       -DNVSHMEM_PREFIX=${NVSHMEM_PREFIX} \
-      -DCMAKE_CUDA_ARCHITECTURES="80;89;90a;100a" \
+      -DCMAKE_CUDA_ARCHITECTURES="90a"   \
+      -DNVSHMEM_PMIX_SUPPORT=0           \
+      -DNVSHMEM_LIBFABRIC_SUPPORT=0      \
+      -DNVSHMEM_IBRC_SUPPORT=1           \
+      -DNVSHMEM_IBGDA_SUPPORT=1          \
+      -DNVSHMEM_IBDEVX_SUPPORT=1         \
+      -DNVSHMEM_USE_GDRCOPY=1            \
+      -DNVSHMEM_BUILD_TESTS=0            \
+      -DNVSHMEM_BUILD_EXAMPLES=0         \
+      -DLIBFABRIC_HOME=/usr              \
+      -DGDRCOPY_HOME=${GDRCOPY_HOME}     \
+      -DNVSHMEM_MPI_SUPPORT=0            \
+      .. \
+    && ninja -j${MAX_JOBS} \
+    && ninja -j${MAX_JOBS} install \
+    && rm -rf /tmp/nvshmem_src_${NVSHMEM_VERSION}*
+
+ENV PATH=${NVSHMEM_PREFIX}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${NVSHMEM_PREFIX}/lib:${LD_LIBRARY_PATH}
+ENV CPATH=${NVSHMEM_PREFIX}/include:${CPATH}
+ENV LIBRARY_PATH=${NVSHMEM_PREFIX}/lib:${LIBRARY_PATH}
+ENV PKG_CONFIG_PATH=${NVSHMEM_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}
+
+# Install PPLX python package
+COPY install-scripts/pplx.sh /tmp/
+RUN chmod +x /tmp/pplx.sh \
+    && /tmp/pplx.sh \
+    && rm /tmp/pplx.sh
+
+ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]
+
+#==============================================================================
+
+FROM base AS deepep
+
+# --- Build and Install NVSHMEM from Source ---
+ENV MPI_HOME=/usr/lib/x86_64-linux-gnu/openmpi
+ENV CPATH=${MPI_HOME}/include:${CPATH}
+
+# First clone DeepEP
+RUN git clone --depth=1 "https://github.com/deepseek-ai/DeepEP.git" "/app/DeepEP"
+
+# Apply DeepEP's nvshmem.patch and then build NVSHMEM
+RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx && \
+    cd /tmp \
+    && wget https://developer.nvidia.com/downloads/assets/secure/nvshmem/nvshmem_src_${NVSHMEM_VERSION}.txz \
+    && tar -xf nvshmem_src_${NVSHMEM_VERSION}.txz \
+    && cd nvshmem_src \
+    && git apply /app/DeepEP/third-party/nvshmem.patch \
+    && mkdir build \
+    && cd build \
+    && cmake \
+      -G Ninja \
+      -DNVSHMEM_PREFIX=${NVSHMEM_PREFIX} \
+      -DCMAKE_CUDA_ARCHITECTURES="90a"   \
       -DNVSHMEM_PMIX_SUPPORT=0           \
       -DNVSHMEM_LIBFABRIC_SUPPORT=1      \
       -DNVSHMEM_IBRC_SUPPORT=1           \
       -DNVSHMEM_IBGDA_SUPPORT=1          \
       -DNVSHMEM_IBDEVX_SUPPORT=1         \
+      -DNVSHMEM_SHMEM_SUPPORT=0          \
       -DNVSHMEM_USE_GDRCOPY=1            \
+      -DNVSHMEM_USE_NCCL=0               \
       -DNVSHMEM_BUILD_TESTS=1            \
       -DNVSHMEM_BUILD_EXAMPLES=0         \
+      -DNVSHMEM_TIMEOUT_DEVICE_POLLING=0 \
       -DLIBFABRIC_HOME=/usr              \
       -DGDRCOPY_HOME=${GDRCOPY_HOME}     \
       -DNVSHMEM_MPI_SUPPORT=1            \
@@ -177,34 +253,17 @@ ENV CPATH=${NVSHMEM_PREFIX}/include:${CPATH}
 ENV LIBRARY_PATH=${NVSHMEM_PREFIX}/lib:${LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=${NVSHMEM_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}
 
-# Install UV
-RUN curl -LsSf https://astral.sh/uv/install.sh \
-        | env UV_INSTALL_DIR="/usr/local/bin/" sh
+# Install DeepEP python package
+COPY install-scripts/deepep.sh /tmp/
+RUN chmod +x /tmp/deepep.sh \
+    && /tmp/deepep.sh \
+    && rm /tmp/deepep.sh
 
-# For neovim.appimage
-RUN echo "export APPIMAGE_EXTRACT_AND_RUN=1" >> $HOME/.zshrc
-
-# Squash a warning
-RUN rm /etc/libibverbs.d/vmw_pvrdma.driver
-
-# Install dependencies - NIXL (python), PPLX-A2A, DeepEP
-COPY install-deps.sh /tmp/
-RUN chmod +x /tmp/install-deps.sh \
-    && /tmp/install-deps.sh \
-    && rm /tmp/install-deps.sh
-
-ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]
-
-#==============================================================================
-
-FROM base AS varun-deepep
-
-# Install dependencies - NIXL (python), PPLX-A2A, DeepEP
-COPY init-vllm.sh /tmp/
-RUN chmod +x /tmp/init-vllm.sh \
+COPY install-scripts/vllm.sh /tmp/
+RUN chmod +x /tmp/vllm.sh \
     && VLLM_REPO_URL="https://github.com/neuralmagic/vllm.git" \
        VLLM_BRANCH="varun/deepep" \
-       /tmp/init-vllm.sh \
-       rm /tmp/init-vllm.sh
+       /tmp/vllm.sh \
+       rm /tmp/vllm.sh
 
 ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]
