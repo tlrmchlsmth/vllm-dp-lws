@@ -59,9 +59,9 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTH
 RUN python${PYTHON_VERSION} -m ensurepip --upgrade
 RUN python${PYTHON_VERSION} -m pip install --upgrade pip setuptools wheel
 
-# Mellanox OFED (latest)
+# Mellanox OFED
 RUN wget -qO - https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox | apt-key add -
-RUN cd /etc/apt/sources.list.d/ && wget https://linux.mellanox.com/public/repo/mlnx_ofed/latest/ubuntu22.04/mellanox_mlnx_ofed.list
+RUN cd /etc/apt/sources.list.d/ && wget https://linux.mellanox.com/public/repo/mlnx_ofed/24.10-0.7.0.0/ubuntu22.04/mellanox_mlnx_ofed.list
 
 RUN apt-get -qq update \
     && apt-get -qq install -y --no-install-recommends \
@@ -150,15 +150,15 @@ RUN cd /tmp \
       -G Ninja \
       -DNVSHMEM_PREFIX=${NVSHMEM_PREFIX} \
       -DCMAKE_CUDA_ARCHITECTURES="80;89;90a;100a" \
-      -DNVSHMEM_MPI_SUPPORT=0            \
-      -DNVSHMEM_PMIX_SUPPORT=0           \
+      -DNVSHMEM_MPI_SUPPORT=1            \
+      -DNVSHMEM_PMIX_SUPPORT=1           \
       -DNVSHMEM_LIBFABRIC_SUPPORT=1      \
       -DNVSHMEM_IBRC_SUPPORT=1           \
       -DNVSHMEM_IBGDA_SUPPORT=1          \
       -DNVSHMEM_IBDEVX_SUPPORT=1         \
       -DNVSHMEM_USE_GDRCOPY=1            \
-      -DNVSHMEM_BUILD_TESTS=0            \
-      -DNVSHMEM_BUILD_EXAMPLES=0         \
+      -DNVSHMEM_BUILD_TESTS=1            \
+      -DNVSHMEM_BUILD_EXAMPLES=1         \
       -DLIBFABRIC_HOME=/usr              \
       -DGDRCOPY_HOME=${GDRCOPY_HOME}     \
       .. \

@@ -107,8 +107,8 @@ spec:
 #                    value: "enabled"
 
                    # NVIDIA_MOFED is likely needed for using IBGDA but causes crashes
-#                  - name: NVIDIA_MOFED
-#                    value: "enabled"
+                  - name: NVIDIA_MOFED
+                    value: "enabled"
 #
                   - name: NCCL_DEBUG
                     value: "INFO"
