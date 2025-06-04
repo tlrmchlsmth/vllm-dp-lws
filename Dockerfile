@@ -1,6 +1,6 @@
 # Dockerfile for vLLM development
 # Use a CUDA base image.
-FROM docker.io/nvidia/cuda:12.8.1-devel-ubuntu22.04 AS base
+FROM docker.io/nvidia/cuda:12.4.1-devel-ubuntu22.04 AS base
 
 WORKDIR /app
 
@@ -164,7 +164,7 @@ FROM base AS pplx
 # Here we install NVSHMEM for pplx-kernel support (without deepep modifications).
 
 # --- Build and Install NVSHMEM from Source ---
-RUN cd /tmp \
+RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx && \
     && wget https://developer.nvidia.com/downloads/assets/secure/nvshmem/nvshmem_src_${NVSHMEM_VERSION}.txz \
     && tar -xf nvshmem_src_${NVSHMEM_VERSION}.txz \
     && cd nvshmem_src \
@@ -180,15 +180,14 @@ RUN cd /tmp \
       -DNVSHMEM_IBGDA_SUPPORT=1          \
       -DNVSHMEM_IBDEVX_SUPPORT=1         \
       -DNVSHMEM_USE_GDRCOPY=1            \
-      -DNVSHMEM_BUILD_TESTS=0            \
+      -DNVSHMEM_BUILD_TESTS=1            \
       -DNVSHMEM_BUILD_EXAMPLES=0         \
       -DLIBFABRIC_HOME=/usr              \
       -DGDRCOPY_HOME=${GDRCOPY_HOME}     \
-      -DNVSHMEM_MPI_SUPPORT=0            \
+      -DNVSHMEM_MPI_SUPPORT=1            \
       .. \
     && ninja -j${MAX_JOBS} \
-    && ninja -j${MAX_JOBS} install \
-    && rm -rf /tmp/nvshmem_src_${NVSHMEM_VERSION}*
+    && ninja -j${MAX_JOBS} install
 
 ENV PATH=${NVSHMEM_PREFIX}/bin:${PATH}
 ENV LD_LIBRARY_PATH=${NVSHMEM_PREFIX}/lib:${LD_LIBRARY_PATH}
@@ -216,8 +215,8 @@ ENV CPATH=${MPI_HOME}/include:${CPATH}
 RUN git clone --depth=1 "https://github.com/deepseek-ai/DeepEP.git" "/app/DeepEP"
 
 # Apply DeepEP's nvshmem.patch and then build NVSHMEM
-RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx && \
-    cd /tmp \
+RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \
+    && cd /app \
     && wget https://developer.nvidia.com/downloads/assets/secure/nvshmem/nvshmem_src_${NVSHMEM_VERSION}.txz \
     && tar -xf nvshmem_src_${NVSHMEM_VERSION}.txz \
     && cd nvshmem_src \
@@ -244,8 +243,7 @@ RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx && \
       -DNVSHMEM_MPI_SUPPORT=1            \
       .. \
     && ninja -j${MAX_JOBS} \
-    && ninja -j${MAX_JOBS} install \
-    && rm -rf /tmp/nvshmem_src_${NVSHMEM_VERSION}*
+    && ninja -j${MAX_JOBS} install
 
 ENV PATH=${NVSHMEM_PREFIX}/bin:${PATH}
 ENV LD_LIBRARY_PATH=${NVSHMEM_PREFIX}/lib:${LD_LIBRARY_PATH}
@@ -258,12 +256,5 @@ COPY install-scripts/deepep.sh /tmp/
 RUN chmod +x /tmp/deepep.sh \
     && /tmp/deepep.sh \
     && rm /tmp/deepep.sh
-
-COPY install-scripts/vllm.sh /tmp/
-RUN chmod +x /tmp/vllm.sh \
-    && VLLM_REPO_URL="https://github.com/neuralmagic/vllm.git" \
-       VLLM_BRANCH="varun/deepep" \
-       /tmp/vllm.sh \
-       rm /tmp/vllm.sh
 
 ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]
