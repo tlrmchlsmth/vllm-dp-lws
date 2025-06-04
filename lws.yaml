@@ -88,10 +88,12 @@ spec:
                     value: "1"
                   - name: DP_SIZE_LOCAL
                     value: "8"
-#                  - name: VLLM_REPO_URL
-#                    value: "https://github.com/vllm-project/vllm.git"
+                  - name: VLLM_REPO_URL
+                    value: "https://github.com/neuralmagic/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "main"
+                    value: "varun/debug-deepgemm"
+                  - name: VLLM_USE_DEEP_GEMM
+                    value: "1"
                   - name: VLLM_ALL2ALL_BACKEND
 #                    value: "naive"
 #                    value: "pplx"
