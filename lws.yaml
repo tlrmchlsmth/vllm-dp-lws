@@ -90,7 +90,7 @@ spec:
                   - name: VLLM_REPO_URL
                     value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "pplx_intranode"
+                    value: "main"
                   - name: VLLM_ALL2ALL_BACKEND
 #                    value: "naive"
                     value: "pplx"
