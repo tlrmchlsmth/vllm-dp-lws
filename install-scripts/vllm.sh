@@ -39,6 +39,21 @@ pushd "${VLLM_SOURCE_DIR}" >/dev/null
 upip -e .
 popd >/dev/null
 
+
+#TODO: move this into its own script
+DeepGEMM_SOURCE_DIR="/app/DeepGEMM"
+DeepGEMM_URL="https://github.com/deepseek-ai/DeepGEMM"
+
+upip cuda-python
+
+# Repositories
+VLLM_REPO_URL="${VLLM_REPO_URL:-https://github.com/vllm-project/vllm.git}"
+clone_or_update "${DeepGEMM_URL}" "${DeepGEMM_SOURCE_DIR}"
+pushd "${DeepGEMM_SOURCE_DIR}" >/dev/null
+git submodule update --init --recursive
+"${PYTHON}" setup.py install
+popd >/dev/null
+
 ################################  Dotfiles  ######################################
 banner "Installing dotfiles"
 clone_or_update "${DOTFILES_REPO_URL}" "${HOME}/dotfiles"

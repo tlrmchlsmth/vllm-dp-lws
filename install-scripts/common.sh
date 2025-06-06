@@ -32,8 +32,9 @@ clone_or_update() {
     git -C "${dir}" fetch --depth=1 origin "${branch}"
     git -C "${dir}" checkout "${branch}"
     git -C "${dir}" reset --hard "origin/${branch}"
+    git -C "${dir}" submodule update --init --recursive
   else
     banner "Cloning $(basename "${dir}")"
-    git clone --depth=1 --branch "${branch}" "${url}" "${dir}"
+    git clone --depth=1 --recursive --branch "${branch}" "${url}" "${dir}"
   fi
 }

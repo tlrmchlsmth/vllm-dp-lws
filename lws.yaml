@@ -5,7 +5,7 @@ metadata:
 spec:
     replicas: 1
     leaderWorkerTemplate:
-        size: 1
+        size: 2
         restartPolicy: RecreateGroupOnPodRestart
 
         workerTemplate:
@@ -23,7 +23,7 @@ spec:
               containers:
               - name: vllm-worker
                 #image: "quay.io/tms/vllm-dev-base:0.0.17"
-                image: "quay.io/tms/vllm-dev-deepep:0.0.20"
+                image: "quay.io/tms/vllm-dev-pplx:0.0.19"
                 imagePullPolicy: Always
                 workingDir: /app
                 stdin: true
@@ -57,6 +57,7 @@ spec:
                         --trust-remote-code \
                         --gpu-memory-utilization 0.93 \
                         --max-model-len 4096 \
+                        --max-num-batched-tokens 1024 \
                         --enforce-eager
                     else
                       #################
@@ -77,6 +78,7 @@ spec:
                         --enforce-eager \
                         --gpu-memory-utilization 0.93 \
                         --max-model-len 4096 \
+                        --max-num-batched-tokens 1024 \
                         --headless
                     fi
                 env:
@@ -87,25 +89,25 @@ spec:
                   - name: TP_SIZE
                     value: "1"
                   - name: DP_SIZE_LOCAL
-                    value: "8"
+                    value: "4"
                   - name: VLLM_REPO_URL
-                    value: "https://github.com/neuralmagic/vllm.git"
+                    value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "varun/debug-deepgemm"
-                  - name: VLLM_USE_DEEP_GEMM
-                    value: "1"
+                    value: "main"
+#                  - name: VLLM_USE_DEEP_GEMM
+#                    value: "1"
                   - name: VLLM_ALL2ALL_BACKEND
 #                    value: "naive"
-#                    value: "pplx"
-                    value: "deepep_high_throughput"
+                    value: "pplx"
+#                    value: "deepep_high_throughput"
 #                    value: "deepep_low_latency"
 #
                     # Needed for GDRCOPY to be used.
                     # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
                     value: "enabled"
-#                  - name: NVIDIA_NVSWITCH
-#                    value: "enabled"
+                  - name: NVIDIA_NVSWITCH
+                    value: "enabled"
 #                  - name: NVIDIA_GDS
 #                    value: "enabled"
 
@@ -126,7 +128,7 @@ spec:
                   - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
                     value: "true"
                   - name: NVSHMEM_HCA_LIST
-                    value: "ibp0:1,ibp1:1,ibp2:1,ibp3:1,ibp4:1,ibp5:1,ibp6:1,ibp7:1"
+                    value: "mlx5_5"
                   - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
                     value: "eth0"
                   - name: GLOO_SOCKET_IFNAME
@@ -137,6 +139,8 @@ spec:
                     value: "ibp"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
+                  - name: HF_HUB_CACHE
+                    value: /huggingface-cache
                   - name: HF_TOKEN
                     valueFrom:
                       secretKeyRef:
@@ -157,27 +161,30 @@ spec:
                         fieldPath: status.podIP
 
                 securityContext:
+                  privileged: true
                   capabilities:
                     add: 
                     - "IPC_LOCK"
                     - "SYS_RAWIO"
                 resources:
                   limits:
-                    nvidia.com/gpu: "8"
                     memory: 64Gi
-                    ephemeral-storage: 1Ti
+                    ephemeral-storage: 64Gi
+                    nvidia.com/gpu: "4"
                     rdma/ib: 1
                   requests:
                     cpu: 8
                     memory: 64Gi
-                    ephemeral-storage: 1Ti 
-                    nvidia.com/gpu: "8"
+                    ephemeral-storage: 64Gi 
+                    nvidia.com/gpu: "4"
                     rdma/ib: 1
                 volumeMounts:
-                  - mountPath: /dev/shm
-                    name: dshm
+                  - name: dshm
+                    mountPath: /dev/shm
                   - name: init-scripts-volume
                     mountPath: /init-scripts
+                  - name: hf-cache
+                    mountPath: /huggingface-cache
               volumes:
                 # Volume for the init script from ConfigMap
                 - name: init-scripts-volume
@@ -189,6 +196,10 @@ spec:
                   emptyDir:
                     medium: Memory
                     sizeLimit: 1Gi
+                # PVC for Hugging Face models cache
+                - name: hf-cache
+                  persistentVolumeClaim:
+                    claimName: tms-hf-cache
 
 ---
 apiVersion: v1

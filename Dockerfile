@@ -1,6 +1,6 @@
 # Dockerfile for vLLM development
 # Use a CUDA base image.
-FROM docker.io/nvidia/cuda:12.4.1-devel-ubuntu22.04 AS base
+FROM docker.io/nvidia/cuda:12.8.1-devel-ubuntu22.04 AS base
 
 WORKDIR /app
 
@@ -162,9 +162,12 @@ ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]
 
 FROM base AS pplx 
 # Here we install NVSHMEM for pplx-kernel support (without deepep modifications).
+ENV MPI_HOME=/usr/lib/x86_64-linux-gnu/openmpi
+ENV CPATH=${MPI_HOME}/include:${CPATH}
 
 # --- Build and Install NVSHMEM from Source ---
-RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx && \
+RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \
+    && cd /app \
     && wget https://developer.nvidia.com/downloads/assets/secure/nvshmem/nvshmem_src_${NVSHMEM_VERSION}.txz \
     && tar -xf nvshmem_src_${NVSHMEM_VERSION}.txz \
     && cd nvshmem_src \
@@ -179,12 +182,15 @@ RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx && \
       -DNVSHMEM_IBRC_SUPPORT=1           \
       -DNVSHMEM_IBGDA_SUPPORT=1          \
       -DNVSHMEM_IBDEVX_SUPPORT=1         \
+      -DNVSHMEM_SHMEM_SUPPORT=0          \
       -DNVSHMEM_USE_GDRCOPY=1            \
+      -DNVSHMEM_MPI_SUPPORT=1            \
+      -DNVSHMEM_USE_NCCL=0               \
       -DNVSHMEM_BUILD_TESTS=1            \
-      -DNVSHMEM_BUILD_EXAMPLES=0         \
-      -DLIBFABRIC_HOME=/usr              \
+      -DNVSHMEM_BUILD_EXAMPLES=1         \
       -DGDRCOPY_HOME=${GDRCOPY_HOME}     \
       -DNVSHMEM_MPI_SUPPORT=1            \
+      -DNVSHMEM_DISABLE_CUDA_VMM=1       \
       .. \
     && ninja -j${MAX_JOBS} \
     && ninja -j${MAX_JOBS} install
@@ -236,11 +242,12 @@ RUN export CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx \
       -DNVSHMEM_USE_GDRCOPY=1            \
       -DNVSHMEM_USE_NCCL=0               \
       -DNVSHMEM_BUILD_TESTS=1            \
-      -DNVSHMEM_BUILD_EXAMPLES=0         \
+      -DNVSHMEM_BUILD_EXAMPLES=1         \
       -DNVSHMEM_TIMEOUT_DEVICE_POLLING=0 \
       -DLIBFABRIC_HOME=/usr              \
       -DGDRCOPY_HOME=${GDRCOPY_HOME}     \
       -DNVSHMEM_MPI_SUPPORT=1            \
+      -DNVSHMEM_DISABLE_CUDA_VMM=1       \
       .. \
     && ninja -j${MAX_JOBS} \
     && ninja -j${MAX_JOBS} install
