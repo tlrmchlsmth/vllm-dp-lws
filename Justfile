@@ -5,9 +5,7 @@ NAMESPACE := "$NAMESPACE"
 HF_TOKEN := "$HF_TOKEN"
 GH_TOKEN := "$GH_TOKEN"
 
-# MODEL := "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
-MODEL := "qwen/Qwen3-30B-A3B-FP8"
-# MODEL := "deepseek-ai/DeepSeek-V3"
+MODEL := "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
 
 KN := "kubectl -n $NAMESPACE"
 

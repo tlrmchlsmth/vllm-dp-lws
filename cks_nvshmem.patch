@@ -1,0 +1,13 @@
+diff --git a/src/modules/transport/ibgda/ibgda.cpp b/src/modules/transport/ibgda/ibgda.cpp
+index ef325cd..7dfe85c 100644
+--- a/src/modules/transport/ibgda/ibgda.cpp
++++ b/src/modules/transport/ibgda/ibgda.cpp
+@@ -3656,7 +3656,7 @@ int nvshmemt_init(nvshmem_transport_t *t, struct nvshmemi_cuda_fn_table *table,
+         const char *name = ftable.get_device_name(device->dev);
+         NVSHMEMI_NULL_ERROR_JMP(name, status, NVSHMEMX_ERROR_INTERNAL, out,
+                                 "ibv_get_device_name failed \n");
+-        if (!strstr(name, "mlx5")) {
++        if (!strstr(name, "ibp")) {
+             ftable.close_device(device->context);
+             device->context = NULL;
+             NVSHMEMI_WARN_PRINT("device %s is not enumerated as an mlx5 device. Skipping...\n",

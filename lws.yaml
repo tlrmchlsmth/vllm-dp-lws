@@ -22,8 +22,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                #image: "quay.io/tms/vllm-dev-base:0.0.17"
-                image: "quay.io/tms/vllm-dev-pplx:0.0.19"
+                image: "quay.io/tms/vllm-dev-pplx:0.0.22"
                 imagePullPolicy: Always
                 workingDir: /app
                 stdin: true
@@ -55,9 +54,6 @@ spec:
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
                         --trust-remote-code \
-                        --gpu-memory-utilization 0.93 \
-                        --max-model-len 4096 \
-                        --max-num-batched-tokens 1024 \
                         --enforce-eager
                     else
                       #################
@@ -76,59 +72,43 @@ spec:
                         --data-parallel-start-rank $START_RANK \
                         --trust-remote-code \
                         --enforce-eager \
-                        --gpu-memory-utilization 0.93 \
-                        --max-model-len 4096 \
-                        --max-num-batched-tokens 1024 \
                         --headless
                     fi
                 env:
                   - name: CUDA_LAUNCH_BLOCKING
                     value: "1"
                   - name: DP_SIZE
-                    value: "8"
+                    value: "4"
                   - name: TP_SIZE
                     value: "1"
                   - name: DP_SIZE_LOCAL
-                    value: "4"
+                    value: "2"
                   - name: VLLM_REPO_URL
                     value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
                     value: "main"
-#                  - name: VLLM_USE_DEEP_GEMM
-#                    value: "1"
-                  - name: VLLM_ALL2ALL_BACKEND
-#                    value: "naive"
+
+                  #- name: VLLM_USE_DEEP_GEMM
+                  #  value: "1"
+                  #- name: VLLM_ALL2ALL_BACKEND
+                  #  value: "naive"
                     value: "pplx"
-#                    value: "deepep_high_throughput"
-#                    value: "deepep_low_latency"
-#
-                    # Needed for GDRCOPY to be used.
-                    # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
+                  # value: "deepep_high_throughput"
+                  #  value: "deepep_low_latency"
+
+                  # Needed for GDRCOPY to be used.
+                  # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
                     value: "enabled"
-                  - name: NVIDIA_NVSWITCH
-                    value: "enabled"
-#                  - name: NVIDIA_GDS
-#                    value: "enabled"
-
-                   # NVIDIA_MOFED is likely needed for using IBGDA but causes crashes
-#                  - name: NVIDIA_MOFED
-#                    value: "enabled"
-#
-                  - name: NCCL_DEBUG
-                    value: "INFO"
-                  - name: NVSHMEM_DEBUG
-                    value: "INFO"
-#                  - name: NVSHMEM_DEBUG_SUBSYS
-#                    value: "TRANSPORT,INIT,MEM,COLL,BOOTSTRAP"
+                  #- name: NVSHMEM_DEBUG
+                  #  value: "INFO"
+                  # Uncomment for debugging
+                  #- name: NVSHMEM_DEBUG_SUBSYS
+                  #  value: "TRANSPORT,INIT,MEM,COLL,BOOTSTRAP"
                   - name: NVSHMEM_REMOTE_TRANSPORT
-                    value: "ibrc"
+                    value: "ibgda"
                   - name: NVSHMEM_IB_ENABLE_IBGDA
                     value: "true"
-                  - name: NVSHMEM_ENABLE_NIC_PE_MAPPING
-                    value: "true"
-                  - name: NVSHMEM_HCA_LIST
-                    value: "mlx5_5"
                   - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
                     value: "eth0"
                   - name: GLOO_SOCKET_IFNAME
@@ -161,7 +141,6 @@ spec:
                         fieldPath: status.podIP
 
                 securityContext:
-                  privileged: true
                   capabilities:
                     add: 
                     - "IPC_LOCK"
@@ -170,13 +149,13 @@ spec:
                   limits:
                     memory: 64Gi
                     ephemeral-storage: 64Gi
-                    nvidia.com/gpu: "4"
+                    nvidia.com/gpu: "2"
                     rdma/ib: 1
                   requests:
                     cpu: 8
                     memory: 64Gi
                     ephemeral-storage: 64Gi 
-                    nvidia.com/gpu: "4"
+                    nvidia.com/gpu: "2"
                     rdma/ib: 1
                 volumeMounts:
                   - name: dshm
@@ -196,7 +175,6 @@ spec:
                   emptyDir:
                     medium: Memory
                     sizeLimit: 1Gi
-                # PVC for Hugging Face models cache
                 - name: hf-cache
                   persistentVolumeClaim:
                     claimName: tms-hf-cache
