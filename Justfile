@@ -9,6 +9,10 @@ MODEL := "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
 
 KN := "kubectl -n $NAMESPACE"
 
+# Print table of nodes on Coreweave. Quiet recipe since the command is messy
+@cks_nodes:
+  kubectl get nodes -o=custom-columns="NAME:metadata.name,IP:status.addresses[?(@.type=='InternalIP')].address,TYPE:metadata.labels['node\.coreweave\.cloud\/type'],LINK:metadata.labels['ethernet\.coreweave\.cloud/speed'],READY:status.conditions[?(@.type=='Ready')].status,CORDON:spec.unschedulable,TAINT:spec.taints[?(@.key=='qos.coreweave.cloud/interruptable')].effect,RELIABILITY:metadata.labels['node\.coreweave\.cloud\/reliability'],LG:metadata.labels['ib\.coreweave\.cloud\/leafgroup'],VERSION:metadata.labels['node\.coreweave\.cloud\/version'],IB:metadata.labels['ib\.coreweave\.cloud\/speed'],STATE:metadata.labels['node\.coreweave\.cloud\/state'],RESERVED:metadata.labels['node\.coreweave\.cloud\/reserved']"
+
 logs POD:
   kubectl logs -f {{POD}} | grep -v "GET /metrics HTTP/1.1"
 

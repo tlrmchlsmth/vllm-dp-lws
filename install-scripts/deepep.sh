@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 ##############################################################################
 # DeepEP installation script
-# - Idempotent: re-runs will update existing repos instead of recloning
 ##############################################################################
 
 COMMON_DIR=${COMMON_DIR:-.}
@@ -17,7 +16,6 @@ echo "uv binary           : ${UV}"
 echo "DeepEP repo         : ${DEEPEP_URL}"
 echo "====================================================================="
 
-################################ DeepEP ######################################
 clone_or_update "${DEEPEP_URL}" "${DEEPEP_SOURCE_DIR}"
 
 banner "Building and installing DeepEP"
