@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Pod
+metadata:
+    name: vllm-builder
+spec:
+  containers:
+  - name: vllm-builder
+    image: "quay.io/tms/vllm-dev-pplx:0.1.0"
+    imagePullPolicy: Always
+    workingDir: /vllm
+    stdin: true
+    tty: true
+    command: ["/bin/bash","-c"]
+    args:
+      - |
+        export VENV_PATH="/code/venv"
+        if [ -d "$VENV_PATH" ] && [ -f "$VENV_PATH/bin/activate" ]; then
+          echo "Using pre-existing venv in $VENV_PATH"
+        else
+          echo "No virtualenv found at $VENV_PATH. Creating new venv"
+          source /init-scripts/common.sh
+          upip virtualenv-clone
+          virtualenv-clone /app/venv /vllm/venv
+        fi
+        VLLM_SOURCE_DIR="/code/vllm" /init-scripts/vllm.sh
+    env:
+      - name: VLLM_REPO_URL
+        value: "https://github.com/vllm-project/vllm.git"
+      - name: VLLM_BRANCH
+        value: "main"
+
+      - name: HF_HUB_CACHE
+        value: /huggingface-cache
+      - name: HF_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: hf-secret
+            key: HF_TOKEN
+            optional: true
+      - name: GH_TOKEN_FROM_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: gh-token-secret
+            key: GH_TOKEN
+            optional: true
+
+    resources:
+      limits:
+        cpu: 64
+        memory: 256Gi
+        ephemeral-storage: 64Gi
+      requests:
+        cpu: 64
+        memory: 256Gi
+        ephemeral-storage: 64Gi 
+    volumeMounts:
+      - name: init-scripts-volume
+        mountPath: /init-scripts
+      - name: hf-cache
+        mountPath: /huggingface-cache
+      - name: vllm
+        mountPath: /code
+  volumes:
+    # Volume for the init script from ConfigMap
+    - name: init-scripts-volume
+      configMap:
+        name: vllm-init-scripts-config
+        defaultMode: 0755 # Set execute permissions for the script
+    - name: hf-cache
+      persistentVolumeClaim:
+        claimName: tms-hf-cache
+    - name: vllm
+      persistentVolumeClaim:
+        claimName: tms-vllm 
+  restartPolicy: Never

@@ -5,7 +5,8 @@ NAMESPACE := "$NAMESPACE"
 HF_TOKEN := "$HF_TOKEN"
 GH_TOKEN := "$GH_TOKEN"
 
-MODEL := "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
+#MODEL := "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
+MODEL := "deepseek-ai/DeepSeek-R1-0528"
 
 KN := "kubectl -n $NAMESPACE"
 
@@ -20,7 +21,8 @@ install:
   kubectl create namespace {{NAMESPACE}} \
   && kubectl create secret generic hf-secret --from-literal=HF_TOKEN={{HF_TOKEN}} -n {{NAMESPACE}} \
   && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}} \
-  && {{KN}} apply -f state/model_cache.pvc
+  && {{KN}} apply -f state/hf-cache.yaml \
+  && {{KN}} apply -f state/vllm.yaml
 
 uninstall:
   just stop \

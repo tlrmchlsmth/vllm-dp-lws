@@ -4,7 +4,7 @@ set -euo pipefail
 trap 'echo "ERROR: Script failed on line $LINENO"; exit 1' ERR
 
 # Python / toolchain
-VENV_PATH="/app/venv"
+VENV_PATH="${VENV_PATH:-/app/venv}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.12}"          # e.g. 3.12
 PYTHON_COMMAND="${PYTHON_COMMAND:-python${PYTHON_VERSION}}"
 PY_TAG="${PYTHON_VERSION//./}"                   # 3.12 → 312 for wheel tag

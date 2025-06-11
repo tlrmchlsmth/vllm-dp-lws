@@ -1,0 +1,12 @@
+# vllm.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tms-vllm
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi 
+  volumeName: tms-vllm-pv
