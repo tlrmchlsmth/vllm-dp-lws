@@ -150,10 +150,10 @@ RUN rm /etc/libibverbs.d/vmw_pvrdma.driver
 # Grab install scripts
 COPY install-scripts/ /tmp/install-scripts/
 RUN chmod +x /tmp/install-scripts/*.sh
-ENV COMMON_DIR="/tmp/install-scripts"
 
 # Install dependencies & NIXL (python)
-RUN /tmp/install-scripts/base-deps.sh
+RUN cd /tmp/install-scripts \
+    && ./base-deps.sh
 
 # For neovim.appimage
 ENV APPIMAGE_EXTRACT_AND_RUN=1
@@ -211,8 +211,9 @@ ENV LIBRARY_PATH=${NVSHMEM_PREFIX}/lib:${LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=${NVSHMEM_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}
 
 # Install PPLX python package
-RUN /tmp/install-scripts/pplx.sh
-RUN /tmp/install-scripts/deepgemm.sh
+RUN cd /tmp/install-scripts \
+    && ./pplx.sh \
+    && ./deepgemm.sh
 RUN rm -r /tmp/install-scripts
 
 ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]
@@ -272,8 +273,9 @@ ENV LIBRARY_PATH=${NVSHMEM_PREFIX}/lib:${LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=${NVSHMEM_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}
 
 # Install DeepEP python package
-RUN /tmp/install-scripts/deepep.sh
-RUN /tmp/install-scripts/deepgemm.sh
+RUN cd /tmp/install-scripts  \
+    && ./deepep.sh \
+    && ./deepgemm.sh
 RUN rm -r /tmp/install-scripts
 
 ENTRYPOINT ["/app/code/venv/bin/vllm", "serve"]

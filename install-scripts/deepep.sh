@@ -3,8 +3,8 @@
 # DeepEP installation script
 ##############################################################################
 
-COMMON_DIR=${COMMON_DIR:-.}
-source ${COMMON_DIR}/common.sh
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" && pwd  )"
+source ${SCRIPT_DIR}/common.sh
 
 DEEPEP_SOURCE_DIR="${DEEPEP_SOURCE_DIR:-/app/DeepEP}"
 DEEPEP_URL="https://github.com/deepseek-ai/DeepEP"

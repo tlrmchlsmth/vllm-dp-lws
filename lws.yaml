@@ -22,7 +22,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-pplx:0.0.22"
+                image: "quay.io/tms/vllm-dev-pplx:0.1.0"
                 imagePullPolicy: Always
                 workingDir: /app
                 stdin: true
@@ -87,21 +87,19 @@ spec:
                     value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
                     value: "main"
-
                   #- name: VLLM_USE_DEEP_GEMM
                   #  value: "1"
-                  #- name: VLLM_ALL2ALL_BACKEND
+                  - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
                     value: "pplx"
-                  # value: "deepep_high_throughput"
+                  #  value: "deepep_high_throughput"
                   #  value: "deepep_low_latency"
-
                   # Needed for GDRCOPY to be used.
                   # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
                     value: "enabled"
-                  #- name: NVSHMEM_DEBUG
-                  #  value: "INFO"
+                  - name: NVSHMEM_DEBUG
+                    value: "INFO"
                   # Uncomment for debugging
                   #- name: NVSHMEM_DEBUG_SUBSYS
                   #  value: "TRANSPORT,INIT,MEM,COLL,BOOTSTRAP"
@@ -152,7 +150,7 @@ spec:
                     nvidia.com/gpu: "2"
                     rdma/ib: 1
                   requests:
-                    cpu: 8
+                    cpu: 16
                     memory: 64Gi
                     ephemeral-storage: 64Gi 
                     nvidia.com/gpu: "2"

@@ -5,8 +5,8 @@
 # - Idempotent: re-runs will update existing repos instead of recloning
 ##############################################################################
 
-COMMON_DIR=${COMMON_DIR:-.}
-source ${COMMON_DIR}/common.sh
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" && pwd  )"
+source ${SCRIPT_DIR}/common.sh
 
 ##############################  configuration  ###############################
 # Locations (override via env if desired)

@@ -29,7 +29,7 @@ uninstall:
 start:
   mkdir -p ./.tmp \
   && {{KN}} create configmap vllm-init-scripts-config \
-    --from-file=install-scripts/vllm.sh \
+    --from-file=install-scripts/ \
     --dry-run=client -o yaml > .tmp/init-scripts-cm.yaml.tmp \
   && {{KN}} apply -f .tmp/init-scripts-cm.yaml.tmp \
   && sed -e 's#__SERVICE_NAME__#vllm-leader#g' \
@@ -44,7 +44,7 @@ start:
 start-pd:
   mkdir -p ./.tmp \
   && {{KN}} create configmap vllm-init-scripts-config \
-    --from-file=install-scripts/vllm.sh \
+    --from-file=install-scripts/ \
     --dry-run=client -o yaml > .tmp/init-scripts-cm.yaml.tmp \
   && {{KN}} apply -f .tmp/init-scripts-cm.yaml.tmp \
   && sed -e 's#__SERVICE_NAME__#vllm-prefill-leader#g' \

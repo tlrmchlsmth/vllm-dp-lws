@@ -3,8 +3,8 @@
 # DeepGEMM installation script
 ##############################################################################
 
-COMMON_DIR=${COMMON_DIR:-.}
-source ${COMMON_DIR}/common.sh
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" && pwd  )"
+source ${SCRIPT_DIR}/common.sh
 
 DeepGEMM_SOURCE_DIR="/app/DeepGEMM"
 DeepGEMM_URL="https://github.com/deepseek-ai/DeepGEMM"
