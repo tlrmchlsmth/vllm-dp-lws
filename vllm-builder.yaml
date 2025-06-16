@@ -31,8 +31,17 @@ spec:
         VLLM_SOURCE_DIR="/code/vllm" \
           clone_or_update "${VLLM_REPO_URL}" "${VLLM_SOURCE_DIR}" "${VLLM_BRANCH}"
 
-        CCACHE_DIR=/code/ccache \
-          /init-scripts/vllm.sh
+        pushd "${VLLM_SOURCE_DIR}" >/dev/null
+        CCACHE_DIR="/code/ccache" \
+        CCACHE_NOHASHDIR="true"   \
+          "${UV}" pip install -e \
+                 --python "${PYTHON}" \
+                 --no-progress \
+                 --no-cache-dir \
+                 --no-build-isolation \
+                 .
+
+        popd >/dev/null
     env:
       - name: VLLM_REPO_URL
         value: "https://github.com/vllm-project/vllm.git"
