@@ -28,12 +28,24 @@ uninstall:
   just stop \
   && kubectl delete namespace {{NAMESPACE}} --ignore-not-found
 
-start:
-  mkdir -p ./.tmp \
-  && {{KN}} create configmap vllm-init-scripts-config \
+create-configmaps:
+  {{KN}} create configmap vllm-init-scripts-config \
     --from-file=install-scripts/ \
     --dry-run=client -o yaml > .tmp/init-scripts-cm.yaml.tmp \
-  && {{KN}} apply -f .tmp/init-scripts-cm.yaml.tmp \
+  && {{KN}} apply -f .tmp/init-scripts-cm.yaml.tmp
+
+rm-configmaps:
+  {{KN}} create configmap vllm-init-scripts-config \
+    --from-file=install-scripts/ \
+    --dry-run=client -o yaml > .tmp/init-scripts-cm.yaml.tmp \
+
+build-vllm:
+  just create-configmaps \
+  && {{KN}} apply -f vllm-builder.yaml
+
+start:
+  mkdir -p ./.tmp \
+  && just create-configmaps \
   && sed -e 's#__SERVICE_NAME__#vllm-leader#g' \
          -e 's#__LWS_NAME__#vllm#g' \
          -e 's#__MODEL__#{{MODEL}}#g' lws.yaml \
@@ -45,10 +57,7 @@ start:
 
 start-pd:
   mkdir -p ./.tmp \
-  && {{KN}} create configmap vllm-init-scripts-config \
-    --from-file=install-scripts/ \
-    --dry-run=client -o yaml > .tmp/init-scripts-cm.yaml.tmp \
-  && {{KN}} apply -f .tmp/init-scripts-cm.yaml.tmp \
+  && just create-configmaps \
   && sed -e 's#__SERVICE_NAME__#vllm-prefill-leader#g' \
          -e 's#__LWS_NAME__#vllm-prefill#g' \
          -e 's#__MODEL__#{{MODEL}}#g' lws.yaml \

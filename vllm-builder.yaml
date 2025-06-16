@@ -5,7 +5,7 @@ metadata:
 spec:
   containers:
   - name: vllm-builder
-    image: "quay.io/tms/vllm-dev-pplx:0.1.0"
+    image: "quay.io/tms/vllm-dev-deepep:0.1.0"
     imagePullPolicy: Always
     workingDir: /vllm
     stdin: true
@@ -18,11 +18,21 @@ spec:
           echo "Using pre-existing venv in $VENV_PATH"
         else
           echo "No virtualenv found at $VENV_PATH. Creating new venv"
-          source /init-scripts/common.sh
-          upip virtualenv-clone
-          virtualenv-clone /app/venv /vllm/venv
+          (
+              export VENV_PATH="/app/venv"
+              source /init-scripts/common.sh
+              upip virtualenv-clone
+              /app/venv/bin/virtualenv-clone /app/venv /code/venv
+          )
         fi
-        VLLM_SOURCE_DIR="/code/vllm" /init-scripts/vllm.sh
+        mkdir -p /code/ccache
+
+        source /init-scripts/common.sh
+        VLLM_SOURCE_DIR="/code/vllm" \
+          clone_or_update "${VLLM_REPO_URL}" "${VLLM_SOURCE_DIR}" "${VLLM_BRANCH}"
+
+        CCACHE_DIR=/code/ccache \
+          /init-scripts/vllm.sh
     env:
       - name: VLLM_REPO_URL
         value: "https://github.com/vllm-project/vllm.git"

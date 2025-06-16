@@ -22,7 +22,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-pplx:0.1.0"
+                image: "quay.io/tms/vllm-dev-deepep:0.1.0"
                 imagePullPolicy: Always
                 workingDir: /app
                 stdin: true
@@ -162,6 +162,8 @@ spec:
                     mountPath: /init-scripts
                   - name: hf-cache
                     mountPath: /huggingface-cache
+                  - name: vllm
+                    mountPath: /code
               volumes:
                 # Volume for the init script from ConfigMap
                 - name: init-scripts-volume
@@ -176,6 +178,9 @@ spec:
                 - name: hf-cache
                   persistentVolumeClaim:
                     claimName: tms-hf-cache
+                - name: vllm
+                  persistentVolumeClaim:
+                    claimName: tms-vllm
 
 ---
 apiVersion: v1
