@@ -7,6 +7,7 @@ GH_TOKEN := "$GH_TOKEN"
 
 #MODEL := "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
 MODEL := "deepseek-ai/DeepSeek-R1-0528"
+#MODEL := "Qwen/Qwen3-235B-A22B-FP8"
 
 KN := "kubectl -n $NAMESPACE"
 

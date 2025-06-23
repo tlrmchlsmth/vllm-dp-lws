@@ -24,12 +24,21 @@ spec:
               - name: vllm-worker
                 image: "quay.io/tms/vllm-dev-deepep:0.1.0"
                 imagePullPolicy: Always
-                workingDir: /app
+                workingDir: /code
                 stdin: true
                 tty: true
                 command: ["/bin/sh","-c"]
                 args:
                   - |
+                    #################
+                    # Interactive section
+                    #################
+                    # export VENV_PATH="/code/venv"
+                    # source /init-scripts/common.sh
+                    # /init-scripts/dotfiles.sh
+                    # sleep infinity
+                    #################
+                    #
                     #################
                     # Install vLLM
                     #################
@@ -54,7 +63,7 @@ spec:
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
                         --trust-remote-code \
-                        --enforce-eager
+                        --load-format dummy
                     else
                       #################
                       # Worker-only launch
@@ -71,29 +80,31 @@ spec:
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
                         --trust-remote-code \
-                        --enforce-eager \
+                        --load-format dummy \
                         --headless
                     fi
                 env:
-                  - name: CUDA_LAUNCH_BLOCKING
+                  - name: VLLM_TORCH_PROFILER_DIR
+                    value: "/code/traces"
+                  - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
                     value: "1"
                   - name: DP_SIZE
-                    value: "4"
+                    value: "16"
                   - name: TP_SIZE
                     value: "1"
                   - name: DP_SIZE_LOCAL
-                    value: "2"
+                    value: "8"
                   - name: VLLM_REPO_URL
                     value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
                     value: "main"
-                  #- name: VLLM_USE_DEEP_GEMM
-                  #  value: "1"
+                  - name: VLLM_USE_DEEP_GEMM
+                    value: "1"
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
-                    value: "pplx"
+                  #  value: "pplx"
                   #  value: "deepep_high_throughput"
-                  #  value: "deepep_low_latency"
+                    value: "deepep_low_latency"
                   # Needed for GDRCOPY to be used.
                   # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
@@ -145,15 +156,15 @@ spec:
                     - "SYS_RAWIO"
                 resources:
                   limits:
-                    memory: 64Gi
+                    memory: 512Gi
                     ephemeral-storage: 64Gi
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "8"
                     rdma/ib: 1
                   requests:
-                    cpu: 16
-                    memory: 64Gi
+                    cpu: 32
+                    memory: 512Gi
                     ephemeral-storage: 64Gi 
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "8"
                     rdma/ib: 1
                 volumeMounts:
                   - name: dshm

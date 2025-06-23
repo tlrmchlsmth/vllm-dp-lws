@@ -19,6 +19,7 @@ benchmark RR NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --num-prompts {{NUM_REQUESTS}} \
         --ignore-eos
 
+# For hitting an individual vLLM instance while deploying a P/D setup
 benchmark_no_pd POD_IP RR NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
     python vllm/benchmarks/benchmark_serving.py \
         --base-url http://{{POD_IP}}:8000 \
@@ -30,3 +31,14 @@ benchmark_no_pd POD_IP RR NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
         --ignore-eos
+
+# For vLLM PyTorch traces.
+# vLLM serve must be run with the VLLM_TORCH_PROFILER_DIR env set.
+start_profile:
+  curl -X POST {{BASE_URL}}/start_profile
+stop_profile:
+  curl -X POST {{BASE_URL}}/stop_profile
+profile:
+  just start_profile \
+  && sleep 1 \
+  && just stop_profile
