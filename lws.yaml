@@ -93,7 +93,7 @@ spec:
                   - name: DP_SIZE_LOCAL
                     value: "8"
                   - name: VLLM_REPO_URL
-                    value: "https://github.com/tlrmchlsmth/vllm.git"
+                    value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
                     value: "main"
                   - name: VLLM_USE_DEEP_GEMM

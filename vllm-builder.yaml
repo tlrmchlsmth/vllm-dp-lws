@@ -44,9 +44,9 @@ spec:
         popd >/dev/null
     env:
       - name: VLLM_REPO_URL
-        value: "https://github.com/neuralmagic/vllm.git"
+        value: "https://github.com/vllm-project/vllm.git"
       - name: VLLM_BRANCH
-        value: "varun/deepseek-decode-opt"
+        value: "main"
 
       - name: HF_HUB_CACHE
         value: /huggingface-cache
@@ -90,5 +90,5 @@ spec:
         claimName: tms-hf-cache
     - name: vllm
       persistentVolumeClaim:
-        claimName: tms-vllm-2
+        claimName: tms-vllm
   restartPolicy: Never
