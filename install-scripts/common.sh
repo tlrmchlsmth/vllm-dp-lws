@@ -22,7 +22,7 @@ export TORCH_CUDA_ARCH_LIST="9.0a+PTX"
 banner() { printf '\n========== %s ==========\n' "$*"; }
 
 # Re-usable “uv pip install” wrapper (adds --no-cache-dir by default)
-upip() { "${UV}" pip install --python "${PYTHON}" --no-progress --no-cache-dir "$@"; }
+upip() { "${UV}" pip install --python "${PYTHON}" --no-progress --no-cache-dir --torch-backend=auto "$@"; }
 
 # Clone the repo if missing, otherwise fast-forward to the requested branch
 clone_or_update() {
