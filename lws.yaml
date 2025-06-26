@@ -62,8 +62,7 @@ spec:
                         --data-parallel-address $(LWS_LEADER_ADDRESS) \
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
-                        --trust-remote-code \
-                        --load-format dummy
+                        --trust-remote-code
                     else
                       #################
                       # Worker-only launch
@@ -80,7 +79,6 @@ spec:
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
                         --trust-remote-code \
-                        --load-format dummy \
                         --headless
                     fi
                 env:
@@ -95,7 +93,7 @@ spec:
                   - name: DP_SIZE_LOCAL
                     value: "8"
                   - name: VLLM_REPO_URL
-                    value: "https://github.com/vllm-project/vllm.git"
+                    value: "https://github.com/tlrmchlsmth/vllm.git"
                   - name: VLLM_BRANCH
                     value: "main"
                   - name: VLLM_USE_DEEP_GEMM
@@ -124,6 +122,8 @@ spec:
                     value: "eth0"
                   - name: NCCL_SOCKET_IFNAME
                     value: "eth0"
+                  #- name: NCCL_DEBUG
+                  #  value: "info"
                   - name: NCCL_IB_HCA
                     value: "ibp"
                   - name: VLLM_LOGGING_LEVEL
