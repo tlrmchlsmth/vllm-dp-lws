@@ -28,11 +28,20 @@ spec:
         mkdir -p /code/ccache
 
         source /init-scripts/common.sh
-        VLLM_SOURCE_DIR="/code/vllm" \
-          clone_or_update "${VLLM_REPO_URL}" "${VLLM_SOURCE_DIR}" "${VLLM_BRANCH}"
+        export VLLM_SOURCE_DIR="/code/vllm"
+        clone_or_update "${VLLM_REPO_URL}" "${VLLM_SOURCE_DIR}" "${VLLM_BRANCH}"
 
-        CCACHE_DIR=/code/ccache \
-          /init-scripts/vllm.sh
+        pushd "${VLLM_SOURCE_DIR}" >/dev/null
+        CCACHE_DIR="/code/ccache" \
+        CCACHE_NOHASHDIR="true"   \
+          "${UV}" pip install \
+                 --python "${PYTHON}" \
+                 --no-progress \
+                 --no-cache-dir \
+                 --no-build-isolation \
+                 -e .
+
+        popd >/dev/null
     env:
       - name: VLLM_REPO_URL
         value: "https://github.com/vllm-project/vllm.git"
@@ -81,5 +90,5 @@ spec:
         claimName: tms-hf-cache
     - name: vllm
       persistentVolumeClaim:
-        claimName: tms-vllm 
+        claimName: tms-vllm
   restartPolicy: Never
