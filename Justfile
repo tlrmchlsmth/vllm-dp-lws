@@ -28,9 +28,7 @@ logs POD:
 install:
   kubectl create namespace {{NAMESPACE}} \
   && kubectl create secret generic hf-secret --from-literal=HF_TOKEN={{HF_TOKEN}} -n {{NAMESPACE}} \
-  && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}} \
-  && {{KN}} apply -f state/hf-cache.yaml \
-  && {{KN}} apply -f state/vllm.yaml
+  && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}}
 
 uninstall:
   just stop \

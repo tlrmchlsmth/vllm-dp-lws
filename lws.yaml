@@ -62,6 +62,11 @@ spec:
                         --data-parallel-address $(LWS_LEADER_ADDRESS) \
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
+                        --enable-eplb \
+                        --num-redundant-experts 32 \
+                        --eplb-window-size 1000 \
+                        --eplb-step-interval 3000 \
+                        --api-server-count 8 \
                         --trust-remote-code
                     else
                       #################
@@ -79,6 +84,10 @@ spec:
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
                         --trust-remote-code \
+                        --enable-eplb \
+                        --num-redundant-experts 32 \
+                        --eplb-window-size 1000 \
+                        --eplb-step-interval 3000 \
                         --headless
                     fi
 ##################
@@ -198,8 +207,9 @@ spec:
                     medium: Memory
                     sizeLimit: 1Gi
                 - name: hf-cache
-                  persistentVolumeClaim:
-                    claimName: tms-hf-cache
+                  hostPath:
+                    path: /mnt/local/hf-cache
+                    type: DirectoryOrCreate
                 - name: vllm
                   persistentVolumeClaim:
                     claimName: tms-vllm
