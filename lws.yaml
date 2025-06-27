@@ -5,7 +5,7 @@ metadata:
 spec:
     replicas: 1
     leaderWorkerTemplate:
-        size: 2
+        size: 4
         restartPolicy: RecreateGroupOnPodRestart
 
         workerTemplate:
@@ -81,13 +81,24 @@ spec:
                         --trust-remote-code \
                         --headless
                     fi
+##################
+# Paste these args into the above vllm serve commands
+# to enable EPLB and API server scaleout.
+##################
+#  --enable-eplb \
+#  --num-redundant-experts 32 \
+#  --eplb-window-size 1000 \
+#  --eplb-step-interval 3000 \
+##################
+#  --api-server-count=8 \
+##################
                 env:
                   - name: VLLM_TORCH_PROFILER_DIR
                     value: "/code/traces"
                   - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
                     value: "1"
                   - name: DP_SIZE
-                    value: "16"
+                    value: "32"
                   - name: TP_SIZE
                     value: "1"
                   - name: DP_SIZE_LOCAL
