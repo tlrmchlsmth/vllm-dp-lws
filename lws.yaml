@@ -5,7 +5,7 @@ metadata:
 spec:
     replicas: 1
     leaderWorkerTemplate:
-        size: 4
+        size: 2
         restartPolicy: RecreateGroupOnPodRestart
 
         workerTemplate:
@@ -22,7 +22,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-deepep:0.1.0"
+                image: "quay.io/tms/vllm-dev-pplx:0.1.0"
                 imagePullPolicy: Always
                 workingDir: /code
                 stdin: true
@@ -98,11 +98,11 @@ spec:
                   - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
                     value: "1"
                   - name: DP_SIZE
-                    value: "32"
+                    value: "4"
                   - name: TP_SIZE
                     value: "1"
                   - name: DP_SIZE_LOCAL
-                    value: "8"
+                    value: "2"
                   - name: VLLM_REPO_URL
                     value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
@@ -111,9 +111,9 @@ spec:
                     value: "1"
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
-                  #  value: "pplx"
+                    value: "pplx"
                   #  value: "deepep_high_throughput"
-                    value: "deepep_low_latency"
+                  #  value: "deepep_low_latency"
                   # Needed for GDRCOPY to be used.
                   # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
@@ -169,13 +169,13 @@ spec:
                   limits:
                     memory: 512Gi
                     ephemeral-storage: 64Gi
-                    nvidia.com/gpu: "8"
+                    nvidia.com/gpu: "2"
                     rdma/ib: 1
                   requests:
                     cpu: 32
                     memory: 512Gi
                     ephemeral-storage: 64Gi 
-                    nvidia.com/gpu: "8"
+                    nvidia.com/gpu: "2"
                     rdma/ib: 1
                 volumeMounts:
                   - name: dshm
