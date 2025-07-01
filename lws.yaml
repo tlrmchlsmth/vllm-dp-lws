@@ -5,7 +5,7 @@ metadata:
 spec:
     replicas: 1
     leaderWorkerTemplate:
-        size: 4
+        size: 2
         restartPolicy: RecreateGroupOnPodRestart
 
         workerTemplate:
@@ -66,7 +66,7 @@ spec:
                         --num-redundant-experts 32 \
                         --eplb-window-size 1000 \
                         --eplb-step-interval 3000 \
-                        --api-server-count 8 \
+                        --api-server-count 16 \
                         --trust-remote-code
                     else
                       #################
@@ -107,7 +107,7 @@ spec:
                   - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
                     value: "1"
                   - name: DP_SIZE
-                    value: "32"
+                    value: "16"
                   - name: TP_SIZE
                     value: "1"
                   - name: DP_SIZE_LOCAL
@@ -181,7 +181,7 @@ spec:
                     nvidia.com/gpu: "8"
                     rdma/ib: 1
                   requests:
-                    cpu: 32
+                    cpu: 64
                     memory: 512Gi
                     ephemeral-storage: 64Gi 
                     nvidia.com/gpu: "8"
