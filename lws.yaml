@@ -5,7 +5,7 @@ metadata:
 spec:
     replicas: 1
     leaderWorkerTemplate:
-        size: 2
+        size: 16
         restartPolicy: RecreateGroupOnPodRestart
 
         workerTemplate:
@@ -46,50 +46,23 @@ spec:
                     #################
                     # RUN vLLM
                     #################
-                    START_RANK=$(( ${LWS_WORKER_INDEX:-0} * DP_SIZE_LOCAL ))
-                    if [ "${LWS_WORKER_INDEX:-0}" -eq 0 ]; then
-                      #################
-                      # Leader-only launch
-                      #################
-                      exec /app/venv/bin/vllm serve \
-                        __MODEL__ \
-                        --port 8080 \
-                        --disable-log-requests \
-                        --enable-expert-parallel \
-                        --tensor-parallel-size $TP_SIZE \
-                        --data-parallel-size $DP_SIZE \
-                        --data-parallel-size-local $DP_SIZE_LOCAL \
-                        --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                        --data-parallel-rpc-port 5555 \
-                        --data-parallel-start-rank $START_RANK \
-                        --enable-eplb \
-                        --num-redundant-experts 32 \
-                        --eplb-window-size 1000 \
-                        --eplb-step-interval 3000 \
-                        --api-server-count 16 \
-                        --trust-remote-code
-                    else
-                      #################
-                      # Worker-only launch
-                      #################
-                      exec /app/venv/bin/vllm serve \
-                        __MODEL__ \
-                        --port 8080 \
-                        --disable-log-requests \
-                        --enable-expert-parallel \
-                        --tensor-parallel-size $TP_SIZE \
-                        --data-parallel-size $DP_SIZE \
-                        --data-parallel-size-local $DP_SIZE_LOCAL \
-                        --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                        --data-parallel-rpc-port 5555 \
-                        --data-parallel-start-rank $START_RANK \
-                        --trust-remote-code \
-                        --enable-eplb \
-                        --num-redundant-experts 32 \
-                        --eplb-window-size 1000 \
-                        --eplb-step-interval 3000 \
-                        --headless
-                    fi
+                    exec /app/venv/bin/vllm serve \
+                      __MODEL__ \
+                      --port 8080 \
+                      --disable-log-requests \
+                      --enable-expert-parallel \
+                      --tensor-parallel-size $TP_SIZE \
+                      --data-parallel-size $(LWS_GROUP_SIZE) \
+                      --data-parallel-address $(LWS_LEADER_ADDRESS) \
+                      --data-parallel-rpc-port 5555 \
+                      --data-parallel-rank $(LWS_WORKER_INDEX) \
+                      --trust-remote-code \
+                      --enable-eplb \
+                      --num-redundant-experts 32 \
+                      --eplb-window-size 1000 \
+                      --eplb-step-interval 3000 \
+                      --headless
+#--data-parallel-start-rank $(LWS_WORKER_INDEX) \
 ##################
 # Paste these args into the above vllm serve commands
 # to enable EPLB and API server scaleout.
@@ -106,16 +79,12 @@ spec:
                     value: "/code/traces"
                   - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
                     value: "1"
-                  - name: DP_SIZE
-                    value: "16"
                   - name: TP_SIZE
                     value: "1"
-                  - name: DP_SIZE_LOCAL
-                    value: "8"
                   - name: VLLM_REPO_URL
-                    value: "https://github.com/vllm-project/vllm.git"
+                    value: "https://github.com/njhill/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "main"
+                    value: "ext-lb-dp"
                   - name: VLLM_USE_DEEP_GEMM
                     value: "1"
                   - name: VLLM_ALL2ALL_BACKEND
@@ -176,15 +145,15 @@ spec:
                     - "SYS_RAWIO"
                 resources:
                   limits:
-                    memory: 512Gi
+                    memory: 128Gi
                     ephemeral-storage: 64Gi
-                    nvidia.com/gpu: "8"
+                    nvidia.com/gpu: "1"
                     rdma/ib: 1
                   requests:
-                    cpu: 64
-                    memory: 512Gi
+                    cpu: 8
+                    memory: 128Gi
                     ephemeral-storage: 64Gi 
-                    nvidia.com/gpu: "8"
+                    nvidia.com/gpu: "1"
                     rdma/ib: 1
                 volumeMounts:
                   - name: dshm
