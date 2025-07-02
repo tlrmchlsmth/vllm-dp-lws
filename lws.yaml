@@ -14,6 +14,7 @@ spec:
 
         workerTemplate:
             spec:
+              hostIPC: true
               affinity:
                 nodeAffinity:
                   requiredDuringSchedulingIgnoredDuringExecution:
@@ -37,10 +38,14 @@ spec:
                     #################
                     # Interactive section
                     #################
-                    export VENV_PATH="/code/venv"
-                    source /init-scripts/common.sh
-                    source $VENV_PATH/bin/activate
-                    /init-scripts/dotfiles.sh
+                    # export VENV_PATH="/code/venv"
+                    # export VLLM_SOURCE_DIR="/code/venv/vllm"
+                    # source /init-scripts/common.sh
+                    # source $VENV_PATH/bin/activate
+                    #
+                    # VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
+                    #
+                    # init-scripts/dotfiles.sh
                     # sleep infinity
                     #################
                     #
@@ -51,11 +56,6 @@ spec:
                     #################
                     # RUN vLLM
                     #################
-                    echo "Worker index" 
-                    echo $(LWS_WORKER_INDEX)
-                    echo "Group Size" 
-                    echo $(LWS_GROUP_SIZE)
-
                     exec "${VENV_PATH}"/bin/vllm serve \
                       __MODEL__ \
                       --port 8080 \
@@ -66,7 +66,6 @@ spec:
                       --data-parallel-address $(LWS_LEADER_ADDRESS) \
                       --data-parallel-rpc-port 5555 \
                       --data-parallel-rank $(LWS_WORKER_INDEX) \
-                      --data-parallel-start-rank $(LWS_WORKER_INDEX) \
                       --trust-remote-code \
                       --enforce-eager
 ##################
@@ -88,9 +87,9 @@ spec:
                   - name: TP_SIZE
                     value: "1"
                   - name: VLLM_REPO_URL
-                    value: "https://github.com/njhill/vllm.git"
+                    value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "ext-lb-dp"
+                    value: "main"
                   - name: VLLM_USE_DEEP_GEMM
                     value: "1"
                   - name: VLLM_ALL2ALL_BACKEND
@@ -162,8 +161,6 @@ spec:
                     nvidia.com/gpu: "1"
                     rdma/ib: 1
                 volumeMounts:
-                  - name: dshm
-                    mountPath: /dev/shm
                   - name: init-scripts-volume
                     mountPath: /init-scripts
                   - name: hf-cache
@@ -176,11 +173,6 @@ spec:
                   configMap:
                     name: vllm-init-scripts-config
                     defaultMode: 0755 # Set execute permissions for the script
-                # Needed for NCCL to function
-                - name: dshm
-                  emptyDir:
-                    medium: Memory
-                    sizeLimit: 1Gi
                 - name: hf-cache
                   hostPath:
                     path: /mnt/local/hf-cache
@@ -188,7 +180,6 @@ spec:
                 - name: vllm
                   persistentVolumeClaim:
                     claimName: tms-vllm
-
 ---
 apiVersion: v1
 kind: Service
