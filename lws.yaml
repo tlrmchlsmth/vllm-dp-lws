@@ -2,11 +2,15 @@ apiVersion: leaderworkerset.x-k8s.io/v1
 kind: LeaderWorkerSet
 metadata:
     name: __LWS_NAME__
+    annotations:
+      leaderworkerset.sigs.k8s.io/subgroup-exclusive-topology: kubernetes.io/hostname
 spec:
     replicas: 1
     leaderWorkerTemplate:
-        size: 16
+        size: 8
         restartPolicy: RecreateGroupOnPodRestart
+        subGroupPolicy:
+          subGroupSize: 8
 
         workerTemplate:
             spec:
@@ -27,26 +31,32 @@ spec:
                 workingDir: /code
                 stdin: true
                 tty: true
-                command: ["/bin/sh","-c"]
+                command: ["/bin/bash","-c"]
                 args:
                   - |
                     #################
                     # Interactive section
                     #################
-                    # export VENV_PATH="/code/venv"
-                    # source /init-scripts/common.sh
-                    # /init-scripts/dotfiles.sh
+                    export VENV_PATH="/code/venv"
+                    source /init-scripts/common.sh
+                    source $VENV_PATH/bin/activate
+                    /init-scripts/dotfiles.sh
                     # sleep infinity
                     #################
                     #
                     #################
                     # Install vLLM
                     #################
-                    VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
+                    # VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
                     #################
                     # RUN vLLM
                     #################
-                    exec /app/venv/bin/vllm serve \
+                    echo "Worker index" 
+                    echo $(LWS_WORKER_INDEX)
+                    echo "Group Size" 
+                    echo $(LWS_GROUP_SIZE)
+
+                    exec "${VENV_PATH}"/bin/vllm serve \
                       __MODEL__ \
                       --port 8080 \
                       --disable-log-requests \
@@ -56,13 +66,9 @@ spec:
                       --data-parallel-address $(LWS_LEADER_ADDRESS) \
                       --data-parallel-rpc-port 5555 \
                       --data-parallel-rank $(LWS_WORKER_INDEX) \
+                      --data-parallel-start-rank $(LWS_WORKER_INDEX) \
                       --trust-remote-code \
-                      --enable-eplb \
-                      --num-redundant-experts 32 \
-                      --eplb-window-size 1000 \
-                      --eplb-step-interval 3000 \
-                      --headless
-#--data-parallel-start-rank $(LWS_WORKER_INDEX) \
+                      --enforce-eager
 ##################
 # Paste these args into the above vllm serve commands
 # to enable EPLB and API server scaleout.
@@ -90,8 +96,8 @@ spec:
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
                   #  value: "pplx"
-                  #  value: "deepep_high_throughput"
-                    value: "deepep_low_latency"
+                    value: "deepep_high_throughput"
+                  #  value: "deepep_low_latency"
                   # Needed for GDRCOPY to be used.
                   # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
