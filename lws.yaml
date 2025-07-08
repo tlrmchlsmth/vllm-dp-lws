@@ -52,11 +52,12 @@ spec:
                     #################
                     # Install vLLM
                     #################
-                    # VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
+                    VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
                     #################
                     # RUN vLLM
                     #################
-                    exec "${VENV_PATH}"/bin/vllm serve \
+                    export CUDA_VISIBLE_DEVICES=$(( LWS_WORKER_INDEX % 8 ))
+                    exec /app/venv/bin/vllm serve \
                       __MODEL__ \
                       --port 8080 \
                       --disable-log-requests \
@@ -144,6 +145,7 @@ spec:
                         fieldPath: status.podIP
 
                 securityContext:
+                  privileged: true
                   capabilities:
                     add: 
                     - "IPC_LOCK"
