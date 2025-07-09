@@ -24,5 +24,5 @@ clone_or_update "${DOTFILES_REPO_URL}" "${DOTFILES_SOURCE_DIR}"
 
 banner "Installing dotfiles"
 pushd "${DOTFILES_SOURCE_DIR}" >/dev/null
-bash install.sh
+bash install.sh -g "${GH_TOKEN_FROM_SECRET}"
 popd >/dev/null

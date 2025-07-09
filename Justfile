@@ -5,6 +5,7 @@ NAMESPACE := "$NAMESPACE"
 HF_TOKEN := "$HF_TOKEN"
 GH_TOKEN := "$GH_TOKEN"
 
+#MODEL := "moonshotai/Kimi-K2-Instruct"
 MODEL := "deepseek-ai/DeepSeek-R1-0528"
 #MODEL := "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
 #MODEL := "Qwen/Qwen3-235B-A22B-FP8"
@@ -25,10 +26,15 @@ gpu_pods:
 logs POD:
   kubectl logs -f {{POD}} | grep -v "GET /metrics HTTP/1.1"
 
-install:
-  kubectl create namespace {{NAMESPACE}} \
+create-secrets:
+  kubectl delete secret hf-secret -n {{NAMESPACE}} --ignore-not-found \
+  && kubectl delete secret gh-token-secret -n {{NAMESPACE}} --ignore-not-found \
   && kubectl create secret generic hf-secret --from-literal=HF_TOKEN={{HF_TOKEN}} -n {{NAMESPACE}} \
   && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}}
+
+install:
+  kubectl create namespace {{NAMESPACE}} \
+  && just create-secrets
 
 uninstall:
   just stop \

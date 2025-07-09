@@ -23,19 +23,20 @@ spec:
               containers:
               - name: vllm-worker
                 image: "quay.io/tms/vllm-dev-deepep:0.1.0"
+                #image: "quay.io/tms/vllm-dev-pplx:0.1.0"
                 imagePullPolicy: Always
-                workingDir: /code
+                workingDir: /app
                 stdin: true
                 tty: true
-                command: ["/bin/sh","-c"]
+                command: ["/bin/bash","-c"]
                 args:
                   - |
                     #################
                     # Interactive section
                     #################
-                    # export VENV_PATH="/code/venv"
-                    # source /init-scripts/common.sh
-                    # /init-scripts/dotfiles.sh
+                    export VENV_PATH="/app/venv"
+                    source /init-scripts/common.sh
+                    /init-scripts/dotfiles.sh
                     # sleep infinity
                     #################
                     #
@@ -62,12 +63,9 @@ spec:
                         --data-parallel-address $(LWS_LEADER_ADDRESS) \
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
-                        --enable-eplb \
-                        --num-redundant-experts 32 \
-                        --eplb-window-size 1000 \
-                        --eplb-step-interval 3000 \
-                        --api-server-count 16 \
-                        --trust-remote-code
+                        --api-server-count 8 \
+                        --trust-remote-code \
+                        --enforce-eager
                     else
                       #################
                       # Worker-only launch
@@ -84,10 +82,7 @@ spec:
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
                         --trust-remote-code \
-                        --enable-eplb \
-                        --num-redundant-experts 32 \
-                        --eplb-window-size 1000 \
-                        --eplb-step-interval 3000 \
+                        --enforce-eager \
                         --headless
                     fi
 ##################
@@ -113,9 +108,9 @@ spec:
                   - name: DP_SIZE_LOCAL
                     value: "8"
                   - name: VLLM_REPO_URL
-                    value: "https://github.com/vllm-project/vllm.git"
+                    value: "https://github.com/neuralmagic/vllm"
                   - name: VLLM_BRANCH
-                    value: "main"
+                    value: "sage/dbo-eager-decode-only"
                   - name: VLLM_USE_DEEP_GEMM
                     value: "1"
                   - name: VLLM_ALL2ALL_BACKEND

@@ -32,6 +32,7 @@ pushd "${VLLM_SOURCE_DIR}" >/dev/null
 # TODO(tms): Work around for compressed_tensors bug in vLLM.
 # Remove when no longer needed
 upip accelerate
+upip blobfile
 
 upip -e .
 popd >/dev/null

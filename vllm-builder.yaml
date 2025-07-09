@@ -7,12 +7,20 @@ spec:
   - name: vllm-builder
     image: "quay.io/tms/vllm-dev-deepep:0.1.0"
     imagePullPolicy: Always
-    workingDir: /vllm
+    workingDir: /code
     stdin: true
     tty: true
     command: ["/bin/bash","-c"]
     args:
       - |
+        #################
+        # Interactive section
+        #################
+        export VENV_PATH="/code/venv"
+        source /init-scripts/common.sh
+        /init-scripts/dotfiles.sh
+        sleep infinity
+        #################
         export VENV_PATH="/code/venv"
         if [ -d "$VENV_PATH" ] && [ -f "$VENV_PATH/bin/activate" ]; then
           echo "Using pre-existing venv in $VENV_PATH"
@@ -48,8 +56,6 @@ spec:
       - name: VLLM_BRANCH
         value: "main"
 
-      - name: HF_HUB_CACHE
-        value: /huggingface-cache
       - name: HF_TOKEN
         valueFrom:
           secretKeyRef:
@@ -75,8 +81,6 @@ spec:
     volumeMounts:
       - name: init-scripts-volume
         mountPath: /init-scripts
-      - name: hf-cache
-        mountPath: /huggingface-cache
       - name: vllm
         mountPath: /code
   volumes:
@@ -85,9 +89,6 @@ spec:
       configMap:
         name: vllm-init-scripts-config
         defaultMode: 0755 # Set execute permissions for the script
-    - name: hf-cache
-      persistentVolumeClaim:
-        claimName: tms-hf-cache
     - name: vllm
       persistentVolumeClaim:
         claimName: tms-vllm
