@@ -83,13 +83,15 @@ start-pd:
   && {{KN}} apply -f proxy/toy-proxy-service.yaml
 
 stop:
-  {{KN}} delete leaderworkerset.leaderworkerset.x-k8s.io/vllm --ignore-not-found \
+  {{KN}} delete leaderworkerset.leaderworkerset.x-k8s.io/vllm-decode --ignore-not-found \
+  && {{KN}} delete leaderworkerset.leaderworkerset.x-k8s.io/vllm-prefill --ignore-not-found \
+  && {{KN}} delete leaderworkerset.leaderworkerset.x-k8s.io/vllm --ignore-not-found \
   && {{KN}} delete service vllm-leader --ignore-not-found \
   && {{KN}} delete pod --all \
     --grace-period=0 \
     --force \
   && {{KN}} delete configmap vllm-init-scripts-config --ignore-not-found \
-  && {{KN}} delete --now deployment toy-llm-proxy --ignore-not-found
+  && {{KN}} delete --now deployment toy-proxy --ignore-not-found
 
 restart:
   just stop; just start 
