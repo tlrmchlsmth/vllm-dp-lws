@@ -38,10 +38,10 @@ spec:
                     #################
                     # Interactive section
                     #################
-                    # export VENV_PATH="/code/venv"
-                    # export VLLM_SOURCE_DIR="/code/venv/vllm"
-                    # source /init-scripts/common.sh
-                    # source $VENV_PATH/bin/activate
+                    export VENV_PATH="/code/venv"
+                    export VLLM_SOURCE_DIR="/code/venv/vllm"
+                    source /init-scripts/common.sh
+                    source $VENV_PATH/bin/activate
                     #
                     # VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
                     #
@@ -52,7 +52,7 @@ spec:
                     #################
                     # Install vLLM
                     #################
-                    VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
+                    # VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
                     #################
                     # RUN vLLM
                     #################
@@ -96,8 +96,8 @@ spec:
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
                   #  value: "pplx"
-                    value: "deepep_high_throughput"
-                  #  value: "deepep_low_latency"
+                  #   value: "deepep_high_throughput"
+                    value: "deepep_low_latency"
                   # Needed for GDRCOPY to be used.
                   # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
