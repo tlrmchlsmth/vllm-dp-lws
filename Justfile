@@ -21,6 +21,10 @@ gpu_pods:
   -o=custom-columns='NAMESPACE:.metadata.namespace,POD:.metadata.name,GPUs:.spec.containers[*].resources.requests.nvidia\.com/gpu' \
   | grep -v '<none>'
 
+in_use:
+  kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.spec.nodeName}{" "}{range .spec.containers[*]}{.resources.requests.nvidia\.com/gpu}{" "}{end}{"\n"}{end}' \
+  | awk '{ node = $1; s = 0; for(i=2; i<=NF; i++) s += $i; allocated[node] += s } END { for(n in allocated) print n ": " allocated[n] " GPUs allocated" }'
+
 
 logs POD:
   kubectl logs -f {{POD}} | grep -v "GET /metrics HTTP/1.1"

@@ -24,6 +24,15 @@ spec:
                             operator: In
                             values:
                               - H200
+                          - key: "tms"
+                            operator: In
+                            values:
+                              - "true"
+
+              tolerations:
+              - key:    "tms"
+                operator: "Exists"
+                effect:  "NoExecute"
 
               containers:
               - name: vllm-worker
@@ -39,13 +48,13 @@ spec:
                     # Interactive section
                     #################
                     export VENV_PATH="/code/venv"
-                    export VLLM_SOURCE_DIR="/code/venv/vllm"
+                    # export VLLM_SOURCE_DIR="/code/venv/vllm"
                     source /init-scripts/common.sh
                     source $VENV_PATH/bin/activate
                     #
                     # VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
                     #
-                    # init-scripts/dotfiles.sh
+                    /init-scripts/dotfiles.sh
                     # sleep infinity
                     #################
                     #
@@ -56,8 +65,8 @@ spec:
                     #################
                     # RUN vLLM
                     #################
-                    export CUDA_VISIBLE_DEVICES=$(( LWS_WORKER_INDEX % 8 ))
-                    exec /app/venv/bin/vllm serve \
+                    export VLLM_VISIBLE_DEVICES=$(( LWS_WORKER_INDEX % 8 ))
+                    exec /code/venv/bin/vllm serve \
                       __MODEL__ \
                       --port 8080 \
                       --disable-log-requests \
@@ -85,19 +94,23 @@ spec:
                     value: "/code/traces"
                   - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
                     value: "1"
+                  #- name: NVIDIA_VISIBLE_DEVICES
+                  #  value: "all"
                   - name: TP_SIZE
                     value: "1"
                   - name: VLLM_REPO_URL
                     value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "main"
+                    value: "gpu_ids2"
                   - name: VLLM_USE_DEEP_GEMM
+                    value: "1"
+                  - name: CUDA_LAUNCH_BLOCKING 
                     value: "1"
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
                   #  value: "pplx"
-                  #   value: "deepep_high_throughput"
-                    value: "deepep_low_latency"
+                    value: "deepep_high_throughput"
+                  #  value: "deepep_low_latency"
                   # Needed for GDRCOPY to be used.
                   # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
