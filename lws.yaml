@@ -15,6 +15,7 @@ spec:
         workerTemplate:
             spec:
               hostIPC: true
+              hostPID: true
               affinity:
                 nodeAffinity:
                   requiredDuringSchedulingIgnoredDuringExecution:
@@ -44,29 +45,54 @@ spec:
                 command: ["/bin/bash","-c"]
                 args:
                   - |
-                    #################
-                    # Interactive section
-                    #################
-                    export VENV_PATH="/code/venv"
-                    # export VLLM_SOURCE_DIR="/code/venv/vllm"
-                    source /init-scripts/common.sh
-                    source $VENV_PATH/bin/activate
-                    #
-                    # VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
-                    #
-                    /init-scripts/dotfiles.sh
-                    # sleep infinity
-                    #################
-                    #
-                    #################
+                    ###################################################
                     # Install vLLM
-                    #################
-                    # VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
+
+                    # Uncomment the following for a persistent abuild 
+                    # export USE_PERSISTENT_BUILD=1
+
+                    if [[ -n "$USE_PERSISTENT_BUILD" ]]; then
+                      export VENV_PATH="/code/venv"
+                      source $VENV_PATH/bin/activate
+                      export VLLM_BIN="/env/venv/bin/vllm"
+                    else
+                      # Otherwise we grab the vLLM branch and build it
+                      VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
+                      export VLLM_BIN="/app/venv/bin/vllm"
+                    fi
+
+                    ###################################################
+                    # Figure out which GPU to use when 'privileged: true'
+                    # vLLM requires that CPU_VISIBLE_DEVICES is set to device ordinals,
+                    # so we need to remap the GPU UUIDs to indices.
+
+                    echo "NVIDIA_VISIBLE_DEVICES=$NVIDIA_VISIBLE_DEVICES"
+                    ALLOCATED_GPU_UUID=$(ls "$NVIDIA_VISIBLE_DEVICES" | head -n 1)
+                    echo "Allocated GPU UUID:  $ALLOCATED_GPU_UUID"
+                    GPU_MAP_DATA=$(nvidia-smi --query-gpu=uuid,index --format=csv,noheader)
+                    echo "nvidia-smi output for UUIDs and indices:"
+                    echo "$GPU_MAP_DATA"
+
+                    export ALLOCATED_GPU_INDEX=$(
+                      echo "$GPU_MAP_DATA" |
+                      awk -F',' -v target_uuid="$ALLOCATED_GPU_UUID" '
+                        {
+                          gsub(/^[ \t]+|[ \t]+$/, "", $1)
+                          if ($1 == target_uuid) {
+                            gsub(/^[ \t]+|[ \t]+$/, "", $2)
+                            print $2
+                            exit
+                          }
+                        }'
+                    )
+
+                    echo "Using GPU Device ID: $ALLOCATED_GPU_INDEX"
                     #################
                     # RUN vLLM
                     #################
-                    export VLLM_VISIBLE_DEVICES=$(( LWS_WORKER_INDEX % 8 ))
-                    exec /code/venv/bin/vllm serve \
+                    export VLLM_VISIBLE_DEVICES=${ALLOCATED_GPU_INDEX}
+
+                    exec ${VLLM_BIN} serve \
                       __MODEL__ \
                       --port 8080 \
                       --disable-log-requests \
@@ -77,6 +103,8 @@ spec:
                       --data-parallel-rpc-port 5555 \
                       --data-parallel-rank $(LWS_WORKER_INDEX) \
                       --trust-remote-code \
+                      # FIXME: OOM
+                      --max-model-len 10240 \
                       --enforce-eager
 ##################
 # Paste these args into the above vllm serve commands
@@ -101,7 +129,7 @@ spec:
                   - name: VLLM_REPO_URL
                     value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "gpu_ids2"
+                    value: "tms/dp_cuda_visible_devices_fix"
                   - name: VLLM_USE_DEEP_GEMM
                     value: "1"
                   - name: CUDA_LAUNCH_BLOCKING 
@@ -109,8 +137,8 @@ spec:
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
                   #  value: "pplx"
-                    value: "deepep_high_throughput"
-                  #  value: "deepep_low_latency"
+                  #  value: "deepep_high_throughput"
+                    value: "deepep_low_latency"
                   # Needed for GDRCOPY to be used.
                   # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
