@@ -90,7 +90,7 @@ spec:
                     #################
                     # RUN vLLM
                     #################
-                    export VLLM_VISIBLE_DEVICES=${ALLOCATED_GPU_INDEX}
+                    export CUDA_VISIBLE_DEVICES=${ALLOCATED_GPU_INDEX}
 
                     exec ${VLLM_BIN} serve \
                       __MODEL__ \
@@ -122,14 +122,12 @@ spec:
                     value: "/code/traces"
                   - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
                     value: "1"
-                  #- name: NVIDIA_VISIBLE_DEVICES
-                  #  value: "all"
                   - name: TP_SIZE
                     value: "1"
                   - name: VLLM_REPO_URL
                     value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
-                    value: "tms/dp_cuda_visible_devices_fix"
+                    value: "main"
                   - name: VLLM_USE_DEEP_GEMM
                     value: "1"
                   - name: CUDA_LAUNCH_BLOCKING 
