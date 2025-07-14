@@ -25,15 +25,6 @@ spec:
                             operator: In
                             values:
                               - H200
-                          - key: "tms"
-                            operator: In
-                            values:
-                              - "true"
-
-              tolerations:
-              - key:    "tms"
-                operator: "Exists"
-                effect:  "NoExecute"
 
               containers:
               - name: vllm-worker
@@ -129,8 +120,6 @@ spec:
                   - name: VLLM_BRANCH
                     value: "main"
                   - name: VLLM_USE_DEEP_GEMM
-                    value: "1"
-                  - name: CUDA_LAUNCH_BLOCKING 
                     value: "1"
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"

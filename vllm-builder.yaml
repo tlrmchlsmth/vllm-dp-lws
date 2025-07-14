@@ -16,7 +16,7 @@ spec:
         export VENV_PATH="/code/venv"
         source /init-scripts/common.sh
         /init-scripts/dotfiles.sh
-        sleep infinity
+        sleep infinity # Uncomment when building the first time, but usually you just want an interactive pod
 
         if [ -d "$VENV_PATH" ] && [ -f "$VENV_PATH/bin/activate" ]; then
           echo "Using pre-existing venv in $VENV_PATH"
