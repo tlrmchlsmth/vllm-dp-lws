@@ -2,14 +2,20 @@ apiVersion: leaderworkerset.x-k8s.io/v1
 kind: LeaderWorkerSet
 metadata:
     name: __LWS_NAME__
+    annotations:
+      leaderworkerset.sigs.k8s.io/subgroup-exclusive-topology: kubernetes.io/hostname
 spec:
     replicas: 1
     leaderWorkerTemplate:
-        size: 2
+        size: 8
         restartPolicy: RecreateGroupOnPodRestart
+        subGroupPolicy:
+          subGroupSize: 8
 
         workerTemplate:
             spec:
+              hostIPC: true
+              hostPID: true
               affinity:
                 nodeAffinity:
                   requiredDuringSchedulingIgnoredDuringExecution:
@@ -22,69 +28,75 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-pplx:0.1.0"
+                image: "quay.io/tms/vllm-dev-deepep:0.1.0"
                 imagePullPolicy: Always
                 workingDir: /code
                 stdin: true
                 tty: true
-                command: ["/bin/sh","-c"]
+                command: ["/bin/bash","-c"]
                 args:
                   - |
-                    #################
-                    # Interactive section
-                    #################
-                    # export VENV_PATH="/code/venv"
-                    # source /init-scripts/common.sh
-                    # /init-scripts/dotfiles.sh
-                    # sleep infinity
-                    #################
-                    #
-                    #################
+                    ###################################################
                     # Install vLLM
-                    #################
-                    VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
+
+                    # Uncomment the following for a persistent abuild 
+                    # export USE_PERSISTENT_BUILD=1
+
+                    if [[ -n "$USE_PERSISTENT_BUILD" ]]; then
+                      export VENV_PATH="/code/venv"
+                      source $VENV_PATH/bin/activate
+                      export VLLM_BIN="/env/venv/bin/vllm"
+                    else
+                      # Otherwise we grab the vLLM branch and build it
+                      VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
+                      export VLLM_BIN="/app/venv/bin/vllm"
+                    fi
+
+                    ###################################################
+                    # Figure out which GPU to use when 'privileged: true'
+                    # vLLM requires that CPU_VISIBLE_DEVICES is set to device ordinals,
+                    # so we need to remap the GPU UUIDs to indices.
+
+                    echo "NVIDIA_VISIBLE_DEVICES=$NVIDIA_VISIBLE_DEVICES"
+                    ALLOCATED_GPU_UUID=$(ls "$NVIDIA_VISIBLE_DEVICES" | head -n 1)
+                    echo "Allocated GPU UUID:  $ALLOCATED_GPU_UUID"
+                    GPU_MAP_DATA=$(nvidia-smi --query-gpu=uuid,index --format=csv,noheader)
+                    echo "nvidia-smi output for UUIDs and indices:"
+                    echo "$GPU_MAP_DATA"
+
+                    export ALLOCATED_GPU_INDEX=$(
+                      echo "$GPU_MAP_DATA" |
+                      awk -F',' -v target_uuid="$ALLOCATED_GPU_UUID" '
+                        {
+                          gsub(/^[ \t]+|[ \t]+$/, "", $1)
+                          if ($1 == target_uuid) {
+                            gsub(/^[ \t]+|[ \t]+$/, "", $2)
+                            print $2
+                            exit
+                          }
+                        }'
+                    )
+
+                    echo "Using GPU Device ID: $ALLOCATED_GPU_INDEX"
                     #################
                     # RUN vLLM
                     #################
-                    START_RANK=$(( ${LWS_WORKER_INDEX:-0} * DP_SIZE_LOCAL ))
-                    if [ "${LWS_WORKER_INDEX:-0}" -eq 0 ]; then
-                      #################
-                      # Leader-only launch
-                      #################
-                      exec /app/venv/bin/vllm serve \
-                        __MODEL__ \
-                        --port 8080 \
-                        --disable-log-requests \
-                        --enable-expert-parallel \
-                        --tensor-parallel-size $TP_SIZE \
-                        --data-parallel-size $DP_SIZE \
-                        --data-parallel-size-local $DP_SIZE_LOCAL \
-                        --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                        --data-parallel-rpc-port 5555 \
-                        --data-parallel-start-rank $START_RANK \
-                        --kv-transfer-config \
-                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
-                        --trust-remote-code
-                    else
-                      #################
-                      # Worker-only launch
-                      #################
-                      exec /app/venv/bin/vllm serve \
-                        __MODEL__ \
-                        --port 8080 \
-                        --disable-log-requests \
-                        --enable-expert-parallel \
-                        --tensor-parallel-size $TP_SIZE \
-                        --data-parallel-size $DP_SIZE \
-                        --data-parallel-size-local $DP_SIZE_LOCAL \
-                        --data-parallel-address $(LWS_LEADER_ADDRESS) \
-                        --data-parallel-rpc-port 5555 \
-                        --data-parallel-start-rank $START_RANK \
-                        --trust-remote-code \
-                        --kv-transfer-config \
-                        '{"kv_connector":"NixlConnector","kv_role":"kv_both"}' \
-                        --headless
-                    fi
+                    export CUDA_VISIBLE_DEVICES=${ALLOCATED_GPU_INDEX}
+
+                    exec ${VLLM_BIN} serve \
+                      __MODEL__ \
+                      --port 8080 \
+                      --disable-log-requests \
+                      --enable-expert-parallel \
+                      --tensor-parallel-size $TP_SIZE \
+                      --data-parallel-size $(LWS_GROUP_SIZE) \
+                      --data-parallel-address $(LWS_LEADER_ADDRESS) \
+                      --data-parallel-rpc-port 5555 \
+                      --data-parallel-rank $(LWS_WORKER_INDEX) \
+                      --trust-remote-code \
+                      # FIXME: OOM
+                      --max-model-len 10240 \
+                      --enforce-eager
 ##################
 # Paste these args into the above vllm serve commands
 # to enable EPLB and API server scaleout.
@@ -101,12 +113,8 @@ spec:
                     value: "/code/traces"
                   - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
                     value: "1"
-                  - name: DP_SIZE
-                    value: "4"
                   - name: TP_SIZE
                     value: "1"
-                  - name: DP_SIZE_LOCAL
-                    value: "2"
                   - name: VLLM_REPO_URL
                     value: "https://github.com/vllm-project/vllm.git"
                   - name: VLLM_BRANCH
@@ -115,9 +123,9 @@ spec:
                     value: "1"
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
-                    value: "pplx"
+                  #  value: "pplx"
                   #  value: "deepep_high_throughput"
-                  #  value: "deepep_low_latency"
+                    value: "deepep_low_latency"
                   # Needed for GDRCOPY to be used.
                   # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
@@ -165,25 +173,24 @@ spec:
                         fieldPath: status.podIP
 
                 securityContext:
+                  privileged: true
                   capabilities:
                     add: 
                     - "IPC_LOCK"
                     - "SYS_RAWIO"
                 resources:
                   limits:
-                    memory: 512Gi
+                    memory: 128Gi
                     ephemeral-storage: 64Gi
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "1"
                     rdma/ib: 1
                   requests:
-                    cpu: 32
-                    memory: 512Gi
+                    cpu: 8
+                    memory: 128Gi
                     ephemeral-storage: 64Gi 
-                    nvidia.com/gpu: "2"
+                    nvidia.com/gpu: "1"
                     rdma/ib: 1
                 volumeMounts:
-                  - name: dshm
-                    mountPath: /dev/shm
                   - name: init-scripts-volume
                     mountPath: /init-scripts
                   - name: hf-cache
@@ -196,11 +203,6 @@ spec:
                   configMap:
                     name: vllm-init-scripts-config
                     defaultMode: 0755 # Set execute permissions for the script
-                # Needed for NCCL to function
-                - name: dshm
-                  emptyDir:
-                    medium: Memory
-                    sizeLimit: 1Gi
                 - name: hf-cache
                   hostPath:
                     path: /mnt/local/hf-cache
@@ -208,7 +210,6 @@ spec:
                 - name: vllm
                   persistentVolumeClaim:
                     claimName: tms-vllm
-
 ---
 apiVersion: v1
 kind: Service

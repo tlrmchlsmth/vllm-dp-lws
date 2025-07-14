@@ -5,10 +5,10 @@ NAMESPACE := "$NAMESPACE"
 HF_TOKEN := "$HF_TOKEN"
 GH_TOKEN := "$GH_TOKEN"
 
-#MODEL := "deepseek-ai/DeepSeek-R1-0528"
+MODEL := "deepseek-ai/DeepSeek-R1-0528"
 #MODEL := "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
 #MODEL := "Qwen/Qwen3-235B-A22B-FP8"
-MODEL := "Qwen/Qwen3-30B-A3B-FP8"
+#MODEL := "Qwen/Qwen3-30B-A3B-FP8"
 
 KN := "kubectl -n $NAMESPACE"
 
@@ -21,6 +21,10 @@ gpu_pods:
   -o=custom-columns='NAMESPACE:.metadata.namespace,POD:.metadata.name,GPUs:.spec.containers[*].resources.requests.nvidia\.com/gpu' \
   | grep -v '<none>'
 
+in_use:
+  kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.spec.nodeName}{" "}{range .spec.containers[*]}{.resources.requests.nvidia\.com/gpu}{" "}{end}{"\n"}{end}' \
+  | awk '{ node = $1; s = 0; for(i=2; i<=NF; i++) s += $i; allocated[node] += s } END { for(n in allocated) print n ": " allocated[n] " GPUs allocated" }'
+
 
 logs POD:
   kubectl logs -f {{POD}} | grep -v "GET /metrics HTTP/1.1"
@@ -28,9 +32,7 @@ logs POD:
 install:
   kubectl create namespace {{NAMESPACE}} \
   && kubectl create secret generic hf-secret --from-literal=HF_TOKEN={{HF_TOKEN}} -n {{NAMESPACE}} \
-  && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}} \
-  && {{KN}} apply -f state/hf-cache.yaml \
-  && {{KN}} apply -f state/vllm.yaml
+  && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}}
 
 uninstall:
   just stop \
