@@ -22,7 +22,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-pplx:0.1.0"
+                image: "quay.io/tms/llm-d-cks:0.2.0-alpha0"
                 imagePullPolicy: Always
                 workingDir: /code
                 stdin: true
@@ -42,7 +42,7 @@ spec:
                     #################
                     # Install vLLM
                     #################
-                    VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
+                    # VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
                     #################
                     # RUN vLLM
                     #################
@@ -51,7 +51,7 @@ spec:
                       #################
                       # Leader-only launch
                       #################
-                      exec /app/venv/bin/vllm serve \
+                      exec /opt/vllm/bin/vllm serve \
                         __MODEL__ \
                         --port 8080 \
                         --disable-log-requests \
@@ -69,7 +69,7 @@ spec:
                       #################
                       # Worker-only launch
                       #################
-                      exec /app/venv/bin/vllm serve \
+                      exec /opt/vllm/bin/vllm serve \
                         __MODEL__ \
                         --port 8080 \
                         --disable-log-requests \
@@ -143,8 +143,8 @@ spec:
                     value: "ibp"
                   - name: VLLM_LOGGING_LEVEL
                     value: "DEBUG"
-                  - name: HF_HUB_CACHE
-                    value: /huggingface-cache
+                  #- name: HF_HUB_CACHE
+                  #  value: /huggingface-cache
                   - name: HF_TOKEN
                     valueFrom:
                       secretKeyRef:
