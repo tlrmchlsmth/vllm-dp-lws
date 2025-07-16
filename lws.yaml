@@ -113,6 +113,8 @@ spec:
                     value: "main"
                   - name: VLLM_USE_DEEP_GEMM
                     value: "1"
+                  - name: TRITON_LIBCUDA_PATH
+                    value: "/usr/lib64"
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
                     value: "pplx"
