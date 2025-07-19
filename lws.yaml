@@ -5,7 +5,7 @@ metadata:
 spec:
     replicas: 1
     leaderWorkerTemplate:
-        size: 2
+        size: 1
         restartPolicy: RecreateGroupOnPodRestart
 
         workerTemplate:
@@ -22,7 +22,7 @@ spec:
 
               containers:
               - name: vllm-worker
-                image: "quay.io/tms/vllm-dev-deepep:0.1.0"
+                image: "quay.io/tms/llm-d-dev:0.2.0-a"
                 imagePullPolicy: Always
                 workingDir: /code
                 stdin: true
@@ -30,28 +30,14 @@ spec:
                 command: ["/bin/sh","-c"]
                 args:
                   - |
-                    #################
-                    # Interactive section
-                    #################
-                    # export VENV_PATH="/code/venv"
-                    # source /init-scripts/common.sh
-                    # /init-scripts/dotfiles.sh
-                    # sleep infinity
-                    #################
-                    #
-                    #################
-                    # Install vLLM
-                    #################
-                    VLLM_USE_PRECOMPILED=1 /init-scripts/vllm.sh
-                    #################
-                    # RUN vLLM
-                    #################
+                    source /opt/vllm/bin/activate
+
                     START_RANK=$(( ${LWS_WORKER_INDEX:-0} * DP_SIZE_LOCAL ))
                     if [ "${LWS_WORKER_INDEX:-0}" -eq 0 ]; then
                       #################
                       # Leader-only launch
                       #################
-                      exec /app/venv/bin/vllm serve \
+                      exec vllm serve \
                         __MODEL__ \
                         --port 8080 \
                         --disable-log-requests \
@@ -59,20 +45,19 @@ spec:
                         --tensor-parallel-size $TP_SIZE \
                         --data-parallel-size $DP_SIZE \
                         --data-parallel-size-local $DP_SIZE_LOCAL \
-                        --data-parallel-address $(LWS_LEADER_ADDRESS) \
+                        --data-parallel-address ${LWS_LEADER_ADDRESS} \
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
-                        --enable-eplb \
-                        --num-redundant-experts 32 \
-                        --eplb-window-size 1000 \
-                        --eplb-step-interval 3000 \
-                        --api-server-count 16 \
-                        --trust-remote-code
+                        --api-server-count 8 \
+                        --trust-remote-code \
+                        --enforce-eager \
+                        --kv_transfer_config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
+
                     else
                       #################
                       # Worker-only launch
                       #################
-                      exec /app/venv/bin/vllm serve \
+                      exec vllm serve \
                         __MODEL__ \
                         --port 8080 \
                         --disable-log-requests \
@@ -80,15 +65,13 @@ spec:
                         --tensor-parallel-size $TP_SIZE \
                         --data-parallel-size $DP_SIZE \
                         --data-parallel-size-local $DP_SIZE_LOCAL \
-                        --data-parallel-address $(LWS_LEADER_ADDRESS) \
+                        --data-parallel-address ${LWS_LEADER_ADDRESS} \
                         --data-parallel-rpc-port 5555 \
                         --data-parallel-start-rank $START_RANK \
                         --trust-remote-code \
-                        --enable-eplb \
-                        --num-redundant-experts 32 \
-                        --eplb-window-size 1000 \
-                        --eplb-step-interval 3000 \
-                        --headless
+                        --headless \
+                        --enforce-eager \
+                        --kv_transfer_config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
                     fi
 ##################
 # Paste these args into the above vllm serve commands
@@ -107,7 +90,7 @@ spec:
                   - name: VLLM_RANDOMIZE_DP_DUMMY_INPUTS
                     value: "1"
                   - name: DP_SIZE
-                    value: "16"
+                    value: "8"
                   - name: TP_SIZE
                     value: "1"
                   - name: DP_SIZE_LOCAL
@@ -121,8 +104,8 @@ spec:
                   - name: VLLM_ALL2ALL_BACKEND
                   #  value: "naive"
                   #  value: "pplx"
-                  #  value: "deepep_high_throughput"
-                    value: "deepep_low_latency"
+                    value: "deepep_high_throughput"
+                  #  value: "deepep_low_latency"
                   # Needed for GDRCOPY to be used.
                   # See: https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.15.0
                   - name: NVIDIA_GDRCOPY
@@ -170,6 +153,8 @@ spec:
                         fieldPath: status.podIP
 
                 securityContext:
+                  runAsUser: 0
+                  runAsGroup: 0
                   capabilities:
                     add: 
                     - "IPC_LOCK"
