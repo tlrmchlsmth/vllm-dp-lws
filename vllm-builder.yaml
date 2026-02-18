@@ -13,6 +13,7 @@ spec:
     command: ["/bin/bash","-c"]
     args:
       - |
+        sleep infinity
         export VENV_PATH="/code/venv"
         if [ -d "$VENV_PATH" ] && [ -f "$VENV_PATH/bin/activate" ]; then
           echo "Using pre-existing venv in $VENV_PATH"
@@ -85,10 +86,11 @@ spec:
       configMap:
         name: vllm-init-scripts-config
         defaultMode: 0755 # Set execute permissions for the script
-    - name: hf-cache
-      persistentVolumeClaim:
-        claimName: tms-hf-cache
     - name: vllm
       persistentVolumeClaim:
         claimName: tms-vllm
+    - name: hf-cache
+      hostPath:
+        path: /mnt/local/hf-cache
+        type: DirectoryOrCreate
   restartPolicy: Never
